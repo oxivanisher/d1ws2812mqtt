@@ -1,0 +1,21 @@
+#ifndef __CONFIG_H
+  #define __CONFIG_H
+
+  /************************* WiFi Access Point *********************************/
+
+  #define WLAN_SSID       ""
+  #define WLAN_PASS       ""
+
+  /************************* Adafruit.io Setup *********************************/
+
+  #define AIO_SERVER      ""
+  #define AIO_SERVERPORT  1883
+  #define AIO_USERNAME    ""
+  #define AIO_KEY         ""
+
+
+  #define PIN D2
+  // How many NeoPixels are attached to the Arduino?
+  #define NUMPIXELS 5
+
+#endif
