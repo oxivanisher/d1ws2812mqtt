@@ -54,27 +54,21 @@ void setup() {
   pixels.setPixelColor(0, pixels.Color(255,0,0));
 
   // Connect to WiFi access point.
-  DEBUG_PRINTLN(); DEBUG_PRINTLN();
-  DEBUG_PRINT("MAC Address: ");
-  DEBUG_PRINTLN(WiFi.macAddress());
-  DEBUG_PRINT("Connecting to ");
-  DEBUG_PRINTLN(WLAN_SSID);
+  DEBUG_PRINT("Connecting to "); DEBUG_PRINTLN(WLAN_SSID);
   WiFi.begin(WLAN_SSID, WLAN_PASS);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     DEBUG_PRINT(".");
   }
   DEBUG_PRINTLN();
-  pixels.setPixelColor(0, pixels.Color(255,165,0));
-
   DEBUG_PRINTLN("WiFi connected");
-  DEBUG_PRINTLN("IP address: "); DEBUG_PRINTLN(WiFi.localIP());
+  pixels.setPixelColor(0, pixels.Color(255,165,0));
+  DEBUG_PRINT("MAC Address: "); DEBUG_PRINTLN(WiFi.macAddress());
+  DEBUG_PRINT("IP address: "); DEBUG_PRINTLN(WiFi.localIP());
 
   // Setup MQTT subscription for onoff feed.
   mqtt.subscribe(&onoffbutton);
 }
-
-uint32_t x=0;
 
 void loop() {
   // loop MQTT
@@ -83,11 +77,13 @@ void loop() {
   // function definition further below.
   MQTT_connect();
   pixels.setPixelColor(0, pixels.Color(0,255,0));
-  delay(1000);
+  #ifdef DEBUG
+    delay(1000);
+  #endif
 
 
   // loop NeoPixel
- int delayval = 100; // delay for half a second
+ int delayval = 100;
  // For a set of NeoPixels the first NeoPixel is 0, second is 1, all the way up to the count of pixels minus one.
 
  for(int i=0;i<NUMPIXELS;i++) {
@@ -101,15 +97,15 @@ void loop() {
    pixels.setPixelColor(i, pixels.Color(0,0,255));
    pixels.show();
    delay(delayval);
+   pixels.setPixelColor(i, pixels.Color(0,0,0));
+   pixels.show();
  }
-
 
 
  // this is our 'wait for incoming subscription packets' busy subloop
  // try to spend your time here
-
  Adafruit_MQTT_Subscribe *subscription;
- while ((subscription = mqtt.readSubscription(5000))) {
+ while ((subscription = mqtt.readSubscription(1000))) {
    if (subscription == &onoffbutton) {
      DEBUG_PRINT(F("Got: "));
      DEBUG_PRINTLN((char *)onoffbutton.lastread);
@@ -117,14 +113,15 @@ void loop() {
  }
 
  // Now we can publish stuff!
- DEBUG_PRINT(F("\nSending discovery package "));
- DEBUG_PRINT(x);
- DEBUG_PRINT("...");
+ DEBUG_PRINT(F("\nSending discovery package "));  //DEBUG_PRINT(mac);
+
  // try to include WiFi.macAddress() in the future
- if (! discovery.publish(x++)) {
-   DEBUG_PRINTLN(F("Failed"));
+ int mac = 5;
+
+ if (! discovery.publish(mac)) {
+   DEBUG_PRINTLN(F(" Failed"));
  } else {
-   DEBUG_PRINTLN(F("OK!"));
+   DEBUG_PRINTLN(F(" OK!"));
  }
 
  // ping the server to keep the mqtt connection alive
@@ -150,7 +147,7 @@ void MQTT_connect() {
 
   DEBUG_PRINT("Connecting to MQTT... ");
 
-  uint8_t retries = 3;
+  uint8_t retries = 5;
   while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
        DEBUG_PRINTLN(mqtt.connectErrorString(ret));
        DEBUG_PRINTLN("Retrying MQTT connection in 5 seconds...");
@@ -159,6 +156,7 @@ void MQTT_connect() {
        retries--;
        if (retries == 0) {
          // basically die and wait for WDT to reset me
+         DEBUG_PRINTLN("Too many retries. Resetting WDT.");
          while (1);
        }
   }
