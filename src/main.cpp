@@ -6,6 +6,15 @@
 // Read settingd from config.h
 #include "config.h"
 
+#ifdef DEBUG
+  #define DEBUG_PRINT(x) Serial.print (x)
+  #define DEBUG_PRINTLN(x) Serial.println (x)
+#else
+  #define DEBUG_PRINT(x)
+  #define DEBUG_PRINTLN(x)
+#endif
+
+
 // Initialize Adafruit_NeoPixel
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -32,38 +41,31 @@ Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAM
 // for some reason (only affects ESP8266, likely an arduino-builder bug).
 void MQTT_connect();
 
-#ifdef DEBUG
-  #define DEBUG_PRINT(x) Serial.print (x)
-  #define DEBUG_PRINTLN(x) Serial.println (x)
-#else
-  #define DEBUG_PRINT(x)
-  #define DEBUG_PRINTLN(x)
-#endif
-
 void setup() {
   #ifdef DEBUG
     Serial.begin(SERIAL_BAUD); // initialize serial connection
+    // delay for the serial monitor to start
+    delay(3000);
   #endif
 
   // setup NeoPixel
+  DEBUG_PRINTLN("Initializing LEDs");
   pixels.begin();
-
-  DEBUG_PRINTLN(F("Adafruit MQTT demo"));
-  delay(10);
+  pixels.setPixelColor(0, pixels.Color(255,0,0));
 
   // Connect to WiFi access point.
   DEBUG_PRINTLN(); DEBUG_PRINTLN();
-  DEBUG_PRINT("Connecting to ");
-  DEBUG_PRINTLN(WLAN_SSID);
   DEBUG_PRINT("MAC Address: ");
   DEBUG_PRINTLN(WiFi.macAddress());
-
+  DEBUG_PRINT("Connecting to ");
+  DEBUG_PRINTLN(WLAN_SSID);
   WiFi.begin(WLAN_SSID, WLAN_PASS);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     DEBUG_PRINT(".");
   }
   DEBUG_PRINTLN();
+  pixels.setPixelColor(0, pixels.Color(255,165,0));
 
   DEBUG_PRINTLN("WiFi connected");
   DEBUG_PRINTLN("IP address: "); DEBUG_PRINTLN(WiFi.localIP());
@@ -75,6 +77,14 @@ void setup() {
 uint32_t x=0;
 
 void loop() {
+  // loop MQTT
+  // Ensure the connection to the MQTT server is alive (this will make the first
+  // connection and automatically reconnect when disconnected).  See the MQTT_connect
+  // function definition further below.
+  MQTT_connect();
+  pixels.setPixelColor(0, pixels.Color(0,255,0));
+  delay(1000);
+
 
   // loop NeoPixel
  int delayval = 100; // delay for half a second
@@ -94,11 +104,6 @@ void loop() {
  }
 
 
- // loop MQTT
- // Ensure the connection to the MQTT server is alive (this will make the first
- // connection and automatically reconnect when disconnected).  See the MQTT_connect
- // function definition further below.
- MQTT_connect();
 
  // this is our 'wait for incoming subscription packets' busy subloop
  // try to spend your time here

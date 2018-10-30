@@ -1,0 +1,9 @@
+version: '3.1'
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    ports:
+      - "${MQTT_PORT}:${MQTT_PORT}"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
