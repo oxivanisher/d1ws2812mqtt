@@ -32,33 +32,41 @@ Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAM
 // for some reason (only affects ESP8266, likely an arduino-builder bug).
 void MQTT_connect();
 
+#ifdef DEBUG
+  #define DEBUG_PRINT(x) Serial.print (x)
+  #define DEBUG_PRINTLN(x) Serial.println (x)
+#else
+  #define DEBUG_PRINT(x)
+  #define DEBUG_PRINTLN(x)
+#endif
 
 void setup() {
+  #ifdef DEBUG
+    Serial.begin(SERIAL_BAUD); // initialize serial connection
+  #endif
+
   // setup NeoPixel
   pixels.begin();
 
-  // Setup MQTT
-  Serial.begin(115200);
+  DEBUG_PRINTLN(F("Adafruit MQTT demo"));
   delay(10);
 
-  Serial.println(F("Adafruit MQTT demo"));
-
   // Connect to WiFi access point.
-  Serial.println(); Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(WLAN_SSID);
-  Serial.print("MAC Address: ");
-  Serial.println(WiFi.macAddress());
+  DEBUG_PRINTLN(); DEBUG_PRINTLN();
+  DEBUG_PRINT("Connecting to ");
+  DEBUG_PRINTLN(WLAN_SSID);
+  DEBUG_PRINT("MAC Address: ");
+  DEBUG_PRINTLN(WiFi.macAddress());
 
   WiFi.begin(WLAN_SSID, WLAN_PASS);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    DEBUG_PRINT(".");
   }
-  Serial.println();
+  DEBUG_PRINTLN();
 
-  Serial.println("WiFi connected");
-  Serial.println("IP address: "); Serial.println(WiFi.localIP());
+  DEBUG_PRINTLN("WiFi connected");
+  DEBUG_PRINTLN("IP address: "); DEBUG_PRINTLN(WiFi.localIP());
 
   // Setup MQTT subscription for onoff feed.
   mqtt.subscribe(&onoffbutton);
@@ -67,6 +75,7 @@ void setup() {
 uint32_t x=0;
 
 void loop() {
+
   // loop NeoPixel
  int delayval = 100; // delay for half a second
  // For a set of NeoPixels the first NeoPixel is 0, second is 1, all the way up to the count of pixels minus one.
@@ -97,20 +106,20 @@ void loop() {
  Adafruit_MQTT_Subscribe *subscription;
  while ((subscription = mqtt.readSubscription(5000))) {
    if (subscription == &onoffbutton) {
-     Serial.print(F("Got: "));
-     Serial.println((char *)onoffbutton.lastread);
+     DEBUG_PRINT(F("Got: "));
+     DEBUG_PRINTLN((char *)onoffbutton.lastread);
    }
  }
 
  // Now we can publish stuff!
- Serial.print(F("\nSending discovery package "));
- Serial.print(x);
- Serial.print("...");
+ DEBUG_PRINT(F("\nSending discovery package "));
+ DEBUG_PRINT(x);
+ DEBUG_PRINT("...");
  // try to include WiFi.macAddress() in the future
  if (! discovery.publish(x++)) {
-   Serial.println(F("Failed"));
+   DEBUG_PRINTLN(F("Failed"));
  } else {
-   Serial.println(F("OK!"));
+   DEBUG_PRINTLN(F("OK!"));
  }
 
  // ping the server to keep the mqtt connection alive
@@ -134,12 +143,12 @@ void MQTT_connect() {
     return;
   }
 
-  Serial.print("Connecting to MQTT... ");
+  DEBUG_PRINT("Connecting to MQTT... ");
 
   uint8_t retries = 3;
   while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-       Serial.println(mqtt.connectErrorString(ret));
-       Serial.println("Retrying MQTT connection in 5 seconds...");
+       DEBUG_PRINTLN(mqtt.connectErrorString(ret));
+       DEBUG_PRINTLN("Retrying MQTT connection in 5 seconds...");
        mqtt.disconnect();
        delay(5000);  // wait 5 seconds
        retries--;
@@ -148,5 +157,5 @@ void MQTT_connect() {
          while (1);
        }
   }
-  Serial.println("MQTT Connected!");
+  DEBUG_PRINTLN("MQTT Connected!");
 }

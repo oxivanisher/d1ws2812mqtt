@@ -1,6 +1,10 @@
 #ifndef __CONFIG_H
   #define __CONFIG_H
 
+  // Development settings
+  //#define DEBUG
+  #define SERIAL_BAUD     115200
+
   /************************* WiFi Access Point *********************************/
 
   #define WLAN_SSID       ""
