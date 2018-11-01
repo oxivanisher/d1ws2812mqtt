@@ -1,7 +1,6 @@
 #include "Adafruit_NeoPixel.h"
 #include "ESP8266WiFi.h"
-#include "Adafruit_MQTT.h"
-#include "Adafruit_MQTT_Client.h"
+#include <PubSubClient.h>
 
 // Read settingd from config.h
 #include "config.h"
@@ -14,38 +13,102 @@
   #define DEBUG_PRINTLN(x)
 #endif
 
+#define PUBLISH_LOOP_SLEEP 10000
 
 // Initialize Adafruit_NeoPixel
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 // Create an ESP8266 WiFiClient class to connect to the MQTT server.
-WiFiClient client;
+WiFiClient espClient;
 // or... use WiFiFlientSecure for SSL
-//WiFiClientSecure client;
+//WiFiClientSecure espClient;
 
-// Setup the MQTT client class by passing in the WiFi client and MQTT server and login details.
-Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
+// Initialize MQTT
+PubSubClient mqttClient(espClient);
 
-/****************************** Feeds ***************************************/
+// Logic switches
+bool readyToUpload = false;
+long lastMsg = 0;
 
-// Setup a feed called 'photocell' for publishing.
-// Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>
-Adafruit_MQTT_Publish discovery = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/d1ws2812/discovery");
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  DEBUG_PRINT("Message arrived [");
+  DEBUG_PRINT(topic);
+  DEBUG_PRINT("] ");
+  for (unsigned int i = 0; i < length; i++) {
+    DEBUG_PRINT((char)payload[i]);
+  }
+  DEBUG_PRINTLN();
 
-// Setup a feed called 'onoff' for subscribing to changes.
-Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/d1ws2812/onoff");
+  // Switch on the LED if an 1 was received as first character
+  if ((char)payload[0] == '1') {
+    // Turn the LED on (Note that LOW is the voltage level
+    digitalWrite(LED_BUILTIN, LOW);
+    // but actually the LED is on; this is because
+    // it is acive low on the ESP-01)
+  } else {
+    digitalWrite(LED_BUILTIN, HIGH);  // Turn the LED off by making the voltage HIGH
+  }
+}
 
-/*************************** Sketch Code ************************************/
+bool mqttReconnect() {
+  // Loop until we're reconnected
+  int counter = 0;
+  while (!mqttClient.connected()) {
+    counter++;
+    if (counter > 5) {
+      DEBUG_PRINTLN("Exiting MQTT reconnect loop");
+      return false;
+    }
 
-// Bug workaround for Arduino 1.6.6, it seems to need a function declaration
-// for some reason (only affects ESP8266, likely an arduino-builder bug).
-void MQTT_connect();
+    DEBUG_PRINT("Attempting MQTT connection...");
+
+    // Create a random client ID
+    String clientId = String("D1WS2812") + "-";
+    clientId += String(random(0xffff), HEX);
+
+    // Attempt to connect
+    if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
+      DEBUG_PRINTLN("connected");
+      // Once connected, publish an announcement...
+      mqttClient.publish("outTopic", "hello world");
+      // ... and resubscribe
+      mqttClient.subscribe("inTopic");
+      return true;
+    } else {
+      DEBUG_PRINT("failed, rc=");
+      DEBUG_PRINT(mqttClient.state());
+      DEBUG_PRINTLN(" try again in 2 seconds");
+      // Wait 2 seconds before retrying
+      delay(2000);
+    }
+  }
+}
+
+bool wifiConnect() {
+  int retryCounter = CONNECT_TIMEOUT * 10;
+  WiFi.forceSleepWake();
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.mode(WIFI_STA); //  Force the ESP into client-only mode
+  delay(100);
+  DEBUG_PRINT("Reconnecting to Wifi ");
+  while (WiFi.status() != WL_CONNECTED) {
+    retryCounter--;
+    if (retryCounter <= 0) {
+      DEBUG_PRINTLN(" timeout reached!");
+      return false;
+    }
+    delay(100);
+    DEBUG_PRINT(".");
+  }
+  DEBUG_PRINTLN(" done");
+  return true;
+}
 
 void setup() {
   #ifdef DEBUG
-    Serial.begin(SERIAL_BAUD); // initialize serial connection
-    // delay for the serial monitor to start
-    delay(3000);
+  Serial.begin(SERIAL_BAUD); // initialize serial connection
+  // delay for the serial monitor to start
+  delay(3000);
   #endif
 
   // setup NeoPixel
@@ -53,112 +116,69 @@ void setup() {
   pixels.begin();
   pixels.setPixelColor(0, pixels.Color(255,0,0));
 
-  // Connect to WiFi access point.
-  DEBUG_PRINT("Connecting to "); DEBUG_PRINTLN(WLAN_SSID);
-  WiFi.begin(WLAN_SSID, WLAN_PASS);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    DEBUG_PRINT(".");
-  }
-  DEBUG_PRINTLN();
-  DEBUG_PRINTLN("WiFi connected");
-  pixels.setPixelColor(0, pixels.Color(255,165,0));
-  DEBUG_PRINT("MAC Address: "); DEBUG_PRINTLN(WiFi.macAddress());
-  DEBUG_PRINT("IP address: "); DEBUG_PRINTLN(WiFi.localIP());
+  // Start the Pub/Sub client
+  mqttClient.setServer(MQTT_SERVER, MQTT_SERVERPORT);
+  mqttClient.setCallback(mqttCallback);
 
-  // Setup MQTT subscription for onoff feed.
-  mqtt.subscribe(&onoffbutton);
 }
 
 void loop() {
-  // loop MQTT
-  // Ensure the connection to the MQTT server is alive (this will make the first
-  // connection and automatically reconnect when disconnected).  See the MQTT_connect
-  // function definition further below.
-  MQTT_connect();
-  pixels.setPixelColor(0, pixels.Color(0,255,0));
-  #ifdef DEBUG
-    delay(1000);
-  #endif
+  // first, get current millis
+  long now = millis();
 
-
-  // loop NeoPixel
- int delayval = 100;
- // For a set of NeoPixels the first NeoPixel is 0, second is 1, all the way up to the count of pixels minus one.
-
- for(int i=0;i<NUMPIXELS;i++) {
-   // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
-   pixels.setPixelColor(i, pixels.Color(0,255,0));
-   pixels.show();
-   delay(delayval);
-   pixels.setPixelColor(i, pixels.Color(255,0,0));
-   pixels.show();
-   delay(delayval);
-   pixels.setPixelColor(i, pixels.Color(0,0,255));
-   pixels.show();
-   delay(delayval);
-   pixels.setPixelColor(i, pixels.Color(0,0,0));
-   pixels.show();
- }
-
-
- // this is our 'wait for incoming subscription packets' busy subloop
- // try to spend your time here
- Adafruit_MQTT_Subscribe *subscription;
- while ((subscription = mqtt.readSubscription(1000))) {
-   if (subscription == &onoffbutton) {
-     DEBUG_PRINT(F("Got: "));
-     DEBUG_PRINTLN((char *)onoffbutton.lastread);
-   }
- }
-
- // Now we can publish stuff!
- DEBUG_PRINT(F("\nSending discovery package "));  //DEBUG_PRINT(mac);
-
- // try to include WiFi.macAddress() in the future
- int mac = 5;
-
- if (! discovery.publish(mac)) {
-   DEBUG_PRINTLN(F(" Failed"));
- } else {
-   DEBUG_PRINTLN(F(" OK!"));
- }
-
- // ping the server to keep the mqtt connection alive
- // NOT required if you are publishing once every KEEPALIVE seconds
- /*
- if(! mqtt.ping()) {
-   mqtt.disconnect();
- }
- */
-
-}
-
-
-// Function to connect and reconnect as necessary to the MQTT server.
-// Should be called in the loop function and it will take care if connecting.
-void MQTT_connect() {
-  int8_t ret;
-
-  // Stop if already connected.
-  if (mqtt.connected()) {
-    return;
+  // Check if the wifi is connected
+  if (WiFi.status() != WL_CONNECTED) {
+    DEBUG_PRINTLN("Calling wifiConnect() as it seems to be required");
+    wifiConnect();
   }
 
-  DEBUG_PRINT("Connecting to MQTT... ");
-
-  uint8_t retries = 5;
-  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-       DEBUG_PRINTLN(mqtt.connectErrorString(ret));
-       DEBUG_PRINTLN("Retrying MQTT connection in 5 seconds...");
-       mqtt.disconnect();
-       delay(5000);  // wait 5 seconds
-       retries--;
-       if (retries == 0) {
-         // basically die and wait for WDT to reset me
-         DEBUG_PRINTLN("Too many retries. Resetting WDT.");
-         while (1);
-       }
+  // MQTT doing its stuff if the wifi is connected
+  if (WiFi.status() == WL_CONNECTED) {
+    DEBUG_PRINT("Is the MQTT Client already connected? ");
+    if (!mqttClient.connected()) {
+      DEBUG_PRINTLN("No, let's try to reconnect");
+      if (! mqttReconnect()) {
+        // This should not happen, but seems to...
+        DEBUG_PRINTLN("MQTT was unable to connect! Exiting the upload loop");
+      } else {
+        readyToUpload = true;
+      }
+    } else {
+      DEBUG_PRINTLN("Yes");
+    }
   }
-  DEBUG_PRINTLN("MQTT Connected!");
+
+  // if readyToUpload, letste go!
+  if (now - lastMsg > PUBLISH_LOOP_SLEEP) {
+    long loopDrift = (now - lastMsg) - PUBLISH_LOOP_SLEEP;
+    lastMsg = now;
+
+    if (readyToUpload) {
+      DEBUG_PRINT("MQTT discovery publish loop: ");
+      mqttClient.loop();
+      String clientMac = WiFi.macAddress();
+      if (mqttClient.publish("/d1ws2812/discovery", clientMac.c_str())) {
+        // Publishing values successful, removing them from cache
+        DEBUG_PRINTLN(" successful");
+      } else {
+        DEBUG_PRINTLN(" FAILED!");
+      }
+    }
+  }
+
+  int delayval = 10;
+  for(int i=0;i<NUMPIXELS;i++) {
+    // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
+    pixels.setPixelColor(i, pixels.Color(0,255,0));
+    pixels.show();
+    delay(delayval);
+    pixels.setPixelColor(i, pixels.Color(255,0,0));
+    pixels.show();
+    delay(delayval);
+    pixels.setPixelColor(i, pixels.Color(0,0,255));
+    pixels.show();
+    delay(delayval);
+    pixels.setPixelColor(i, pixels.Color(0,0,0));
+    pixels.show();
+  }
 }

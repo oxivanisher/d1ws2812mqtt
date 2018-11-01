@@ -7,15 +7,16 @@
 
   /************************* WiFi Access Point *********************************/
 
-  #define WLAN_SSID       ""
-  #define WLAN_PASS       ""
+  #define WIFI_SSID       ""
+  #define WIFI_PASSWORD   ""
+  #define CONNECT_TIMEOUT 5
 
   /************************* Adafruit.io Setup *********************************/
 
-  #define AIO_SERVER      ""
-  #define AIO_SERVERPORT  1883
-  #define AIO_USERNAME    ""
-  #define AIO_KEY         ""
+  #define MQTT_SERVER     ""
+  #define MQTT_SERVERPORT 1883
+  #define MQTT_USERNAME   ""
+  #define MQTT_PASSWORD   ""
 
 
   #define PIN D2
