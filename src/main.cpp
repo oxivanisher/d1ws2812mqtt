@@ -31,25 +31,26 @@ PubSubClient mqttClient(espClient);
 bool readyToUpload = false;
 long lastMsg = 0;
 
-void mqttCallback(char* topic, byte* payload, unsigned int length) {
-  DEBUG_PRINT("Message arrived [");
-  DEBUG_PRINT(topic);
-  DEBUG_PRINT("] ");
-  for (unsigned int i = 0; i < length; i++) {
-    DEBUG_PRINT((char)payload[i]);
-  }
-  DEBUG_PRINTLN();
 
-  // Switch on the LED if an 1 was received as first character
-  if ((char)payload[0] == '1') {
-    // Turn the LED on (Note that LOW is the voltage level
-    digitalWrite(LED_BUILTIN, LOW);
-    // but actually the LED is on; this is because
-    // it is acive low on the ESP-01)
-  } else {
-    digitalWrite(LED_BUILTIN, HIGH);  // Turn the LED off by making the voltage HIGH
-  }
-}
+// RBG function vars
+// general fade loop vars
+unsigned long currentFadeStart = 0;
+unsigned long currentFadeEnd = 0;
+uint8_t currentColor[] = {0, 0, 0};
+uint8_t fadeCount = 0;
+
+// sunrise loop vars
+unsigned long sunriseStartTime = 0;
+uint8_t startColor[] = {0, 0, 0};
+int sunriseLoopStep = 0;
+bool doSunrise = false;
+
+// fixed color vars
+bool doFixedColor = false;
+
+// fire
+bool doFire = true;
+unsigned long nextFireLoop = 0;
 
 bool mqttReconnect() {
   // Loop until we're reconnected
@@ -71,9 +72,13 @@ bool mqttReconnect() {
     if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
       DEBUG_PRINTLN("connected");
       // Once connected, publish an announcement...
-      mqttClient.publish("outTopic", "hello world");
+      //mqttClient.publish("outTopic", "hello world");
       // ... and resubscribe
-      mqttClient.subscribe("inTopic");
+      String clientMac = WiFi.macAddress();
+      mqttClient.subscribe("/d1ws2812/all", 1);
+      //mqttClient.subscribe("/d1ws2812/" + clientMac.c_str(), 1);
+      //mqttClient.subscribe("/d1ws2812/mac", 1);
+
       return true;
     } else {
       DEBUG_PRINT("failed, rc=");
@@ -106,26 +111,6 @@ bool wifiConnect() {
 }
 
 
-// RBG function vars
-// general fade loop vars
-unsigned long currentFadeStart = 0;
-unsigned long currentFadeEnd = 0;
-uint8_t currentColor[] = {0, 0, 0};
-uint8_t fadeCount = 0;
-
-// sunrise loop vars
-unsigned long sunriseStartTime = 0;
-uint8_t startColor[] = {0, 0, 0};
-int sunriseLoopStep = 0;
-bool doSunrise = false;
-
-// fixed color vars
-bool doFixedColor = false;
-
-// fire
-bool doFire = true;
-unsigned long nextFireLoop = 0;
-
 // helper functions
 // fill the neopixel dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
@@ -146,7 +131,7 @@ bool fade(uint8_t currentColor[], uint8_t startColor[], uint32_t fadeDuration, u
     startColor[1] = currentColor[1];
     startColor[2] = currentColor[2];
     Serial.print((String)"Fade " + fadeCount + " will take " + (currentFadeEnd - currentFadeStart) + " millis ");
-    Serial.println((String)"from " + startColor[0] + ", " + startColor[1] + ", " + startColor[2] +" to " + redEnd + ", " + greenEnd + ", " + blueEnd);
+    DEBUG_PRINTLN((String)"from " + startColor[0] + ", " + startColor[1] + ", " + startColor[2] +" to " + redEnd + ", " + greenEnd + ", " + blueEnd);
   }
 
   unsigned long now = millis();
@@ -161,67 +146,13 @@ bool fade(uint8_t currentColor[], uint8_t startColor[], uint32_t fadeDuration, u
     // current fade finished
     unsigned long endTime = millis();
     unsigned long fadeDuration = (endTime - currentFadeStart) / 1000;
-    Serial.println((String)"Fade " + fadeCount + " ended after " + fadeDuration + " seconds.");
+    DEBUG_PRINTLN((String)"Fade " + fadeCount + " ended after " + fadeDuration + " seconds.");
     currentFadeStart = 0;
     return true;
   } else {
     // current fade not yet finished
     return false;
   }
-}
-
-// callback for received i2c data
-void receiveData(int byteCount) {
-  // int numOfBytes = Wire.available();
-  // i2cCommand = (uint8_t) Wire.read();  //cmd
-  //
-  // Serial.print("I2c data received: ");
-  // Serial.println((String)"Command: " + i2cCommand);
-  //
-  // uint8_t i2cData[numOfBytes-1];
-  // for(int i=0; i<numOfBytes-1; i++){
-  //   i2cData[i] = (uint8_t) Wire.read();
-  // }
-  //
-  // // number 1 = sunrise
-  // if (i2cCommand == 1) {
-  //     Serial.println("Enabling sunrise");
-  //     doSunrise = true;
-  //     doFixedColor = false;
-  //     doFire = false;
-  // } else if (i2cCommand == 2) {
-  //     Serial.println("Enabling fixed color");
-  //     doSunrise = false;
-  //     doFixedColor = true;
-  //     doFire = false;
-  //     colorWipe (pixels.Color(i2cData[0], i2cData[1], i2cData[2]), i2cData[3]);
-  // } else if (i2cCommand == 3) {
-  //     // not yet implemented
-  //     Serial.println("Enabling fade to color");
-  //     doSunrise = false;
-  //     doFixedColor = false;
-  //     doFire = false;
-  // } else if (i2cCommand == 4) {
-  //     // not yet implemented
-  //     Serial.println("Enabling rainbow");
-  //     doSunrise = false;
-  //     doFixedColor = false;
-  //     doFire = false;
-  // } else if (i2cCommand == 5) {
-  //     // not yet implemented
-  //     Serial.println("Enabling rainbow");
-  //     doSunrise = false;
-  //     doFixedColor = false;
-  //     doFire = true;
-  // } else if (i2cCommand == 0) {
-  //     Serial.println("Disabling everything");
-  //     doSunrise = false;
-  //     doFixedColor = false;
-  //     doFire = false;
-  //     colorWipe (pixels.Color(0, 0, 0), 0);
-  // } else {
-  //   Serial.println("Unknown i2c command");
-  // }
 }
 
 // sunrise
@@ -232,7 +163,7 @@ bool sunrise() {
     return false;
   }
   if (sunriseStartTime < 1) {
-    Serial.println((String)"Sunrise starting");
+    DEBUG_PRINTLN((String)"Sunrise starting");
     sunriseStartTime = millis();
     sunriseLoopStep = 0;
     currentFadeStart = 0;
@@ -261,7 +192,7 @@ bool sunrise() {
   if (sunriseLoopStep >= fadeSteps) {
     // reset all variables
     unsigned long duration = (millis() - sunriseStartTime) / 1000;
-    Serial.println((String)"Sunrise ended after " + duration + " seconds.");
+    DEBUG_PRINTLN((String)"Sunrise ended after " + duration + " seconds.");
     sunriseLoopStep = 0;
     doSunrise = false;
   }
@@ -298,51 +229,57 @@ bool fire() {
   nextFireLoop = millis() + random(50,150);
 }
 
-void pleaseFixMe() {
-  // uint8_t i2cData[numOfBytes-1];
-  // for(int i=0; i<numOfBytes-1; i++){
-  //   i2cData[i] = (uint8_t) Wire.read();
-  // }
-  //
-  // // number 1 = sunrise
-  // if (i2cCommand == 1) {
-  //     Serial.println("Enabling sunrise");
-  //     doSunrise = true;
-  //     doFixedColor = false;
-  //     doFire = false;
-  // } else if (i2cCommand == 2) {
-  //     Serial.println("Enabling fixed color");
-  //     doSunrise = false;
-  //     doFixedColor = true;
-  //     doFire = false;
-  //     pixels. (pixels.Color(i2cData[0], i2cData[1], i2cData[2]), i2cData[3]);
-  // } else if (i2cCommand == 3) {
-  //     // not yet implemented
-  //     Serial.println("Enabling fade to color");
-  //     doSunrise = false;
-  //     doFixedColor = false;
-  //     doFire = false;
-  // } else if (i2cCommand == 4) {
-  //     // not yet implemented
-  //     Serial.println("Enabling rainbow");
-  //     doSunrise = false;
-  //     doFixedColor = false;
-  //     doFire = false;
-  // } else if (i2cCommand == 5) {
-  //     // not yet implemented
-  //     Serial.println("Enabling rainbow");
-  //     doSunrise = false;
-  //     doFixedColor = false;
-  //     doFire = true;
-  // } else if (i2cCommand == 0) {
-  //     Serial.println("Disabling everything");
-  //     doSunrise = false;
-  //     doFixedColor = false;
-  //     doFire = false;
-  //     colorWipe (pixels.Color(0, 0, 0), 0);
-  // } else {
-  //   Serial.println("Unknown i2c command");
-  // }
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  DEBUG_PRINT("Message arrived: Topic [");
+  DEBUG_PRINT(topic);
+  DEBUG_PRINT("] | Data [");
+  for (unsigned int i = 0; i < length; i++) {
+    DEBUG_PRINT((char)payload[i]);
+  }
+  DEBUG_PRINTLN("]");
+
+  // (char)payload[0] == '1'
+
+  DEBUG_PRINT("Command: "); DEBUG_PRINTLN((char)payload[0]);
+
+  if ((char)payload[0] == '1') {
+      DEBUG_PRINTLN("Enabling sunrise");
+      doSunrise = true;
+      doFixedColor = false;
+      doFire = false;
+  } else if ((char)payload[0] == '2') {
+      DEBUG_PRINTLN("Enabling fixed color");
+      doSunrise = false;
+      doFixedColor = true;
+      doFire = false;
+      colorWipe (pixels.Color(payload[1], payload[2], payload[3]), payload[4]);
+  } else if ((char)payload[0] == '3') {
+      // not yet implemented
+      DEBUG_PRINTLN("Enabling fade to color");
+      doSunrise = false;
+      doFixedColor = false;
+      doFire = false;
+  } else if ((char)payload[0] == '4') {
+      // not yet implemented
+      DEBUG_PRINTLN("Enabling rainbow");
+      doSunrise = false;
+      doFixedColor = false;
+      doFire = false;
+  } else if ((char)payload[0] == '5') {
+      // not yet implemented
+      DEBUG_PRINTLN("Enabling rainbow");
+      doSunrise = false;
+      doFixedColor = false;
+      doFire = true;
+  } else if ((char)payload[0] == '0') {
+      DEBUG_PRINTLN("Disabling everything");
+      doSunrise = false;
+      doFixedColor = false;
+      doFire = false;
+      colorWipe (pixels.Color(0, 0, 0), 0);
+  } else {
+    DEBUG_PRINTLN("Unknown RGB command");
+  }
 }
 
 void setup() {
@@ -372,6 +309,7 @@ void setup() {
 void loop() {
   // first, get current millis
   long now = millis();
+  mqttClient.loop();
 
   // Check if the wifi is connected
   if (WiFi.status() != WL_CONNECTED) {
@@ -381,17 +319,16 @@ void loop() {
 
   // MQTT doing its stuff if the wifi is connected
   if (WiFi.status() == WL_CONNECTED) {
-    DEBUG_PRINT("Is the MQTT Client already connected? ");
+    //DEBUG_PRINT("Is the MQTT Client already connected? ");
     if (!mqttClient.connected()) {
-      DEBUG_PRINTLN("No, let's try to reconnect");
+      DEBUG_PRINTLN("MQTT is not connected, let's try to reconnect");
       if (! mqttReconnect()) {
         // This should not happen, but seems to...
         DEBUG_PRINTLN("MQTT was unable to connect! Exiting the upload loop");
       } else {
         readyToUpload = true;
+        DEBUG_PRINTLN("MQTT successfully reconnected");
       }
-    } else {
-      DEBUG_PRINTLN("Yes");
     }
   }
 
@@ -401,8 +338,7 @@ void loop() {
     lastMsg = now;
 
     if (readyToUpload) {
-      DEBUG_PRINT("MQTT discovery publish loop: ");
-      mqttClient.loop();
+      DEBUG_PRINT("MQTT discovery publish loop:");
       String clientMac = WiFi.macAddress();
       if (mqttClient.publish("/d1ws2812/discovery", clientMac.c_str())) {
         // Publishing values successful, removing them from cache
@@ -413,23 +349,29 @@ void loop() {
     }
   }
 
+  // enabling the onboard led
+  digitalWrite(LED_BUILTIN, LOW);
+
   // Call RGB Strip functions
   sunrise();
   fire();
 
-  int delayval = 10;
-  for(int i=0;i<NUMPIXELS;i++) {
-    // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
-    pixels.setPixelColor(i, pixels.Color(0,255,0));
-    pixels.show();
-    delay(delayval);
-    pixels.setPixelColor(i, pixels.Color(255,0,0));
-    pixels.show();
-    delay(delayval);
-    pixels.setPixelColor(i, pixels.Color(0,0,255));
-    pixels.show();
-    delay(delayval);
-    pixels.setPixelColor(i, pixels.Color(0,0,0));
-    pixels.show();
-  }
+  // disabling the onboard led
+  digitalWrite(LED_BUILTIN, HIGH);
+
+  // int delayval = 10;
+  // for(int i=0;i<NUMPIXELS;i++) {
+  //   // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
+  //   pixels.setPixelColor(i, pixels.Color(0,255,0));
+  //   pixels.show();
+  //   delay(delayval);
+  //   pixels.setPixelColor(i, pixels.Color(255,0,0));
+  //   pixels.show();
+  //   delay(delayval);
+  //   pixels.setPixelColor(i, pixels.Color(0,0,255));
+  //   pixels.show();
+  //   delay(delayval);
+  //   pixels.setPixelColor(i, pixels.Color(0,0,0));
+  //   pixels.show();
+  // }
 }
