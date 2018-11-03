@@ -74,9 +74,16 @@ bool mqttReconnect() {
       // Once connected, publish an announcement...
       //mqttClient.publish("outTopic", "hello world");
       // ... and resubscribe
-      String clientMac = WiFi.macAddress();
+
+      // subscribe to "all" topic
       mqttClient.subscribe("/d1ws2812/all", 1);
-      //mqttClient.subscribe("/d1ws2812/" + clientMac.c_str(), 1);
+
+      // subscript to the mac address (private) topic
+      char topic[27];
+      strcat(topic, "/d1ws2812/");
+      String clientMac = WiFi.macAddress();
+      strcat(topic, clientMac.c_str());
+      mqttClient.subscribe(topic, 1);
       //mqttClient.subscribe("/d1ws2812/mac", 1);
 
       return true;
@@ -112,9 +119,26 @@ bool wifiConnect() {
 
 
 // helper functions
+// Thanks to https://gist.github.com/mattfelsen/9467420
+String getValue(String data, char separator, int index) {
+    int found = 0;
+    int strIndex[] = { 0, -1 };
+    int maxIndex = data.length();
+
+    for (int i = 0; i <= maxIndex && found <= index; i++) {
+        if (data.charAt(i) == separator || i == maxIndex) {
+            found++;
+            strIndex[0] = strIndex[1] + 1;
+            strIndex[1] = (i == maxIndex) ? i+1 : i;
+        }
+    }
+    return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
 // fill the neopixel dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
   for (uint16_t i = 0; i < pixels.numPixels(); i++) {
+    delay(wait);
     pixels.setPixelColor(i, c);
   }
   pixels.show();
@@ -230,17 +254,19 @@ bool fire() {
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  unsigned int numOfOptions = 0;
   DEBUG_PRINT("Message arrived: Topic [");
   DEBUG_PRINT(topic);
   DEBUG_PRINT("] | Data [");
   for (unsigned int i = 0; i < length; i++) {
     DEBUG_PRINT((char)payload[i]);
+    if ((char)payload[i] == ';') {
+      numOfOptions++;
+    }
   }
-  DEBUG_PRINTLN("]");
-
-  // (char)payload[0] == '1'
-
-  DEBUG_PRINT("Command: "); DEBUG_PRINTLN((char)payload[0]);
+  DEBUG_PRINT("] - Found ");
+  DEBUG_PRINT(numOfOptions);
+  DEBUG_PRINTLN(" options.");
 
   if ((char)payload[0] == '1') {
       DEBUG_PRINTLN("Enabling sunrise");
@@ -248,11 +274,14 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       doFixedColor = false;
       doFire = false;
   } else if ((char)payload[0] == '2') {
+      // check for correct number of options
       DEBUG_PRINTLN("Enabling fixed color");
       doSunrise = false;
       doFixedColor = true;
       doFire = false;
-      colorWipe (pixels.Color(payload[1], payload[2], payload[3]), payload[4]);
+
+      String s = String((char*)payload);
+      colorWipe (pixels.Color(getValue(s,';',1).toInt(), getValue(s,';',2).toInt(), getValue(s,';',3).toInt()), getValue(s,';',4).toInt());
   } else if ((char)payload[0] == '3') {
       // not yet implemented
       DEBUG_PRINTLN("Enabling fade to color");
@@ -267,7 +296,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       doFire = false;
   } else if ((char)payload[0] == '5') {
       // not yet implemented
-      DEBUG_PRINTLN("Enabling rainbow");
+      DEBUG_PRINTLN("Enabling fire");
       doSunrise = false;
       doFixedColor = false;
       doFire = true;
