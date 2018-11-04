@@ -53,10 +53,18 @@ bool doFixedColor = false;
 bool doFire = true;
 unsigned long nextFireLoop = 0;
 
+// run
+bool doRun = false;
+uint8_t runLeds = 0;
+uint16_t runDelay = 0;
+bool runDirection = false;
+unsigned long nextRunLoop = 0;
+uint8_t runIndex = 0;
+
 // flash
 bool doFlash = false;
 unsigned long flashStartTime = 0;
-int flashLoopStep = 0;
+uint16_t flashLoopStep = 0;
 
 bool mqttReconnect() {
   // Loop until we're reconnected
@@ -146,8 +154,8 @@ void colorWipe(uint32_t c, uint8_t wait) {
   for (uint16_t i = 0; i < pixels.numPixels(); i++) {
     delay(wait);
     pixels.setPixelColor(i, c);
+    pixels.show();
   }
-  pixels.show();
 }
 
 // neopixel color fade loop
@@ -255,11 +263,6 @@ bool fire() {
     if(r1>255) r1=0;
     if(g1>255) g1=0;
     if(b1>255) b1=0;
-    DEBUG_PRINT(r1);
-    DEBUG_PRINT(" ");
-    DEBUG_PRINT(g1);
-    DEBUG_PRINT(" ");
-    DEBUG_PRINTLN(b1);
     pixels.setPixelColor(i, pixels.Color(r1, g1, b1));
   }
   pixels.show();
@@ -270,7 +273,7 @@ bool fire() {
 // flash a color
 bool flash() {
   if (! doFlash) {
-    // no sunrise happening!
+    // no flash happening!
     flashStartTime = 0;
     return false;
   }
@@ -287,9 +290,9 @@ bool flash() {
   }
 
   int flashData[][4] = {
-    { 250, targetColor[0], targetColor[1], targetColor[2]},
-    { 500, targetColor[0], targetColor[1], targetColor[2]},
-    { 250, 0, 0, 0}
+    { 100, targetColor[0], targetColor[1], targetColor[2]},
+    { 100, targetColor[0], targetColor[1], targetColor[2]},
+    { 400, 0, 0, 0}
   };
 
   if (fade(currentColor, startColor, flashData[flashLoopStep][0], flashData[flashLoopStep][1], flashData[flashLoopStep][2], flashData[flashLoopStep][3])) {
@@ -307,6 +310,42 @@ bool flash() {
     // set default effect
     doFire = true;
   }
+}
+
+bool run() {
+  // FIXME: direction not yet implemented!
+  if (! doRun) {
+    // no run happening!
+    return false;
+  }
+//  uint8_t runLeds = 0;
+//  uint16_t runDelay = 0;
+// runIndex = 1
+
+  if (nextRunLoop < millis()) {
+    for(int i=0;i<NUMPIXELS;i++) {
+      DEBUG_PRINT(i);
+      DEBUG_PRINT(" % ");
+      DEBUG_PRINT(runLeds);
+      DEBUG_PRINT(" == ");
+      DEBUG_PRINTLN(runIndex);
+
+      if ((i % runLeds) == runIndex) {
+        pixels.setPixelColor(i, pixels.Color(targetColor[0],targetColor[1],targetColor[2]));
+      } else {
+        pixels.setPixelColor(i, pixels.Color(startColor[0],startColor[1],startColor[2]));
+      }
+    }
+    pixels.show();
+
+    runIndex++;
+    if (runIndex > runLeds) {
+      runIndex = 0;
+    }
+
+    nextRunLoop = millis() + runDelay;
+  }
+
 }
 
 // logic
@@ -332,12 +371,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire = false;
     doFlash = false;
   } else if ((char)payload[0] == '2') {
-    // check for correct number of options
     DEBUG_PRINTLN("Enabling fixed color");
+    // options: red;green;blue;wait ms
     doSunrise = false;
     doFixedColor = true;
     doFire = false;
     doFlash = false;
+    doRun = false;
 
     String s = String((char*)payload);
     colorWipe (pixels.Color(getValue(s,';',1).toInt(), getValue(s,';',2).toInt(), getValue(s,';',3).toInt()), getValue(s,';',4).toInt());
@@ -348,6 +388,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFixedColor = false;
     doFire = false;
     doFlash = false;
+    doRun = false;
   } else if ((char)payload[0] == '4') {
     // not yet implemented
     DEBUG_PRINTLN("Enabling rainbow");
@@ -355,6 +396,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFixedColor = false;
     doFire = false;
     doFlash = false;
+    doRun = false;
   } else if ((char)payload[0] == '5') {
     DEBUG_PRINTLN("Enabling fire");
     doSunrise = false;
@@ -362,22 +404,49 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash = false;
     doFire = true;
     doFlash = false;
+    doRun = false;
   } else if ((char)payload[0] == '6') {
     DEBUG_PRINTLN("Enabling flash");
+    // options: red;green;blue
     doSunrise = false;
     doFixedColor = false;
     doFire = false;
     doFlash = true;
+    doRun = false;
     String s = String((char*)payload);
     targetColor[0] = getValue(s,';',1).toInt();
     targetColor[1] = getValue(s,';',2).toInt();
     targetColor[2] = getValue(s,';',3).toInt();
+  } else if ((char)payload[0] == '7') {
+    DEBUG_PRINTLN("Enabling run");
+    // options: num of leds;delay;direction;acrive red;active green;active blue;passive red;passive green;passive blue
+    doSunrise = false;
+    doFixedColor = false;
+    doFire = false;
+    doFlash = false;
+    doRun = true;
+    String s = String((char*)payload);
+
+    runLeds = getValue(s,';',1).toInt();
+    runDelay = getValue(s,';',2).toInt();
+    if (getValue(s,';',3).toInt()) {
+      runDirection = true;
+    } else {
+      runDirection = false;
+    }
+    targetColor[0] = getValue(s,';',4).toInt();
+    targetColor[1] = getValue(s,';',5).toInt();
+    targetColor[2] = getValue(s,';',6).toInt();
+    startColor[0] = getValue(s,';',7).toInt();
+    startColor[1] = getValue(s,';',8).toInt();
+    startColor[2] = getValue(s,';',9).toInt();
   } else if ((char)payload[0] == '0') {
     DEBUG_PRINTLN("Disabling everything");
     doSunrise = false;
     doFixedColor = false;
     doFire = false;
     doFlash = false;
+    doRun = false;
     colorWipe (pixels.Color(0, 0, 0), 0);
   } else {
     DEBUG_PRINTLN("Unknown RGB command");
@@ -436,7 +505,7 @@ void loop() {
 
   // if readyToUpload, letste go!
   if (now - lastMsg > PUBLISH_LOOP_SLEEP) {
-    long loopDrift = (now - lastMsg) - PUBLISH_LOOP_SLEEP;
+    // long loopDrift = (now - lastMsg) - PUBLISH_LOOP_SLEEP;
     lastMsg = now;
 
     if (readyToUpload) {
@@ -458,23 +527,8 @@ void loop() {
   sunrise();
   fire();
   flash();
+  run();
 
   // disabling the onboard led
   digitalWrite(LED_BUILTIN, HIGH);
-
-  // int delayval = 10;
-  // for(int i=0;i<NUMPIXELS;i++) {
-  //   // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
-  //   pixels.setPixelColor(i, pixels.Color(0,255,0));
-  //   pixels.show();
-  //   delay(delayval);
-  //   pixels.setPixelColor(i, pixels.Color(255,0,0));
-  //   pixels.show();
-  //   delay(delayval);
-  //   pixels.setPixelColor(i, pixels.Color(0,0,255));
-  //   pixels.show();
-  //   delay(delayval);
-  //   pixels.setPixelColor(i, pixels.Color(0,0,0));
-  //   pixels.show();
-  // }
 }
