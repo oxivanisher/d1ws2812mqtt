@@ -251,18 +251,14 @@ bool fire() {
     return false;
   }
 
-  uint16_t r = 200;
-  uint16_t g = r-80;
-  uint16_t b = 30;
-
   for (uint16_t i = 0; i < pixels.numPixels(); i++) {
-    uint16_t flicker = random(0,100);
-    uint16_t r1 = r-flicker;
-    uint16_t g1 = g-flicker;
-    uint16_t b1 = b-flicker;
-    if(r1>255) r1=0;
-    if(g1>255) g1=0;
-    if(b1>255) b1=0;
+    uint8_t flicker = random(0,100);
+    int16_t r1 = 256 - flicker;
+    int16_t g1 = 120 - flicker;
+    int16_t b1 = 30  - flicker;
+    if(r1<0) r1=0;
+    if(g1<0) g1=0;
+    if(b1<0) b1=0;
     pixels.setPixelColor(i, pixels.Color(r1, g1, b1));
   }
   pixels.show();
@@ -312,6 +308,7 @@ bool flash() {
   }
 }
 
+// running led
 bool run() {
   if (! doRun) {
     return false;
