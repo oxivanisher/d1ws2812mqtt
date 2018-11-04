@@ -372,46 +372,46 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   } else if ((char)payload[0] == '2') {
     DEBUG_PRINTLN("Enabling fixed color");
     // options: red;green;blue;wait ms
-    doSunrise = false;
+    doSunrise    = false;
     doFixedColor = true;
-    doFire = false;
-    doFlash = false;
-    doRun = false;
+    doFire       = false;
+    doFlash      = false;
+    doRun        = false;
 
     String s = String((char*)payload);
     colorWipe (pixels.Color(getValue(s,';',1).toInt(), getValue(s,';',2).toInt(), getValue(s,';',3).toInt()), getValue(s,';',4).toInt());
   } else if ((char)payload[0] == '3') {
     // not yet implemented
     DEBUG_PRINTLN("Enabling fade to color");
-    doSunrise = false;
+    doSunrise    = false;
     doFixedColor = false;
-    doFire = false;
-    doFlash = false;
-    doRun = false;
+    doFire       = false;
+    doFlash      = false;
+    doRun        = false;
   } else if ((char)payload[0] == '4') {
     // not yet implemented
     DEBUG_PRINTLN("Enabling rainbow");
-    doSunrise = false;
+    doSunrise    = false;
     doFixedColor = false;
-    doFire = false;
-    doFlash = false;
-    doRun = false;
+    doFire       = false;
+    doFlash      = false;
+    doRun        = false;
   } else if ((char)payload[0] == '5') {
     DEBUG_PRINTLN("Enabling fire");
-    doSunrise = false;
+    doSunrise    = false;
     doFixedColor = false;
-    doFlash = false;
-    doFire = true;
-    doFlash = false;
-    doRun = false;
+    doFire       = true;
+    doFlash      = false;
+    doRun        = false;
   } else if ((char)payload[0] == '6') {
     DEBUG_PRINTLN("Enabling flash");
     // options: red;green;blue
-    doSunrise = false;
+    doSunrise    = false;
     doFixedColor = false;
-    doFire = false;
-    doFlash = true;
-    doRun = false;
+    doFire       = false;
+    doFlash      = true;
+    doRun        = false;
+
     String s = String((char*)payload);
     targetColor[0] = getValue(s,';',1).toInt();
     targetColor[1] = getValue(s,';',2).toInt();
@@ -419,13 +419,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   } else if ((char)payload[0] == '7') {
     DEBUG_PRINTLN("Enabling run");
     // options: num of leds;delay;direction;acrive red;active green;active blue;passive red;passive green;passive blue
-    doSunrise = false;
+    doSunrise    = false;
     doFixedColor = false;
-    doFire = false;
-    doFlash = false;
-    doRun = true;
-    String s = String((char*)payload);
+    doFire       = false;
+    doFlash      = false;
+    doRun        = true;
 
+    String s = String((char*)payload);
     runLeds = getValue(s,';',1).toInt();
     runDelay = getValue(s,';',2).toInt();
     if (getValue(s,';',3).toInt()) {
@@ -441,11 +441,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     startColor[2] = getValue(s,';',9).toInt();
   } else if ((char)payload[0] == '0') {
     DEBUG_PRINTLN("Disabling everything");
-    doSunrise = false;
+    doSunrise    = false;
     doFixedColor = false;
-    doFire = false;
-    doFlash = false;
-    doRun = false;
+    doFire       = false;
+    doFlash      = false;
+    doRun        = false;
     colorWipe (pixels.Color(0, 0, 0), 0);
   } else {
     DEBUG_PRINTLN("Unknown RGB command");
