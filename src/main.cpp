@@ -36,14 +36,15 @@ long lastMsg = 0;
 // general fade loop vars
 unsigned long currentFadeStart = 0;
 unsigned long currentFadeEnd = 0;
+uint8_t startColor[] = {0, 0, 0};
 uint8_t currentColor[] = {0, 0, 0};
+uint8_t targetColor[] = {0, 0, 0};
 uint8_t fadeCount = 0;
 
 // sunrise loop vars
-unsigned long sunriseStartTime = 0;
-uint8_t startColor[] = {0, 0, 0};
-int sunriseLoopStep = 0;
 bool doSunrise = false;
+unsigned long sunriseStartTime = 0;
+int sunriseLoopStep = 0;
 
 // fixed color vars
 bool doFixedColor = false;
@@ -51,6 +52,11 @@ bool doFixedColor = false;
 // fire
 bool doFire = true;
 unsigned long nextFireLoop = 0;
+
+// flash
+bool doFlash = false;
+unsigned long flashStartTime = 0;
+int flashLoopStep = 0;
 
 bool mqttReconnect() {
   // Loop until we're reconnected
@@ -150,7 +156,7 @@ bool fade(uint8_t currentColor[], uint8_t startColor[], uint32_t fadeDuration, u
     // new fade loop. calculating and setting required things
     fadeCount++;
     currentFadeStart = millis();
-    currentFadeEnd = currentFadeStart + (fadeDuration * 1000);
+    currentFadeEnd = currentFadeStart + fadeDuration;
     startColor[0] = currentColor[0];
     startColor[1] = currentColor[1];
     startColor[2] = currentColor[2];
@@ -199,13 +205,13 @@ bool sunrise() {
   }
 
   int sunriseData[][4] = {
-    { 50,   0,   0,   5},
-    { 50,   0,  20,  52},
-    { 50,  25,  20,  60},
-    { 50, 207,  87,  39},
-    { 50, 220, 162,  16},
-    { 50, 255, 165,   0},
-    { 50, 255, 255,  30}
+    { 50 * 1000,   0,   0,   5},
+    { 50 * 1000,   0,  20,  52},
+    { 50 * 1000,  25,  20,  60},
+    { 50 * 1000, 207,  87,  39},
+    { 50 * 1000, 220, 162,  16},
+    { 50 * 1000, 255, 165,   0},
+    { 50 * 1000, 255, 255,  30}
   };
 
   if (fade(currentColor, startColor, sunriseData[sunriseLoopStep][0], sunriseData[sunriseLoopStep][1], sunriseData[sunriseLoopStep][2], sunriseData[sunriseLoopStep][3])) {
@@ -219,6 +225,9 @@ bool sunrise() {
     DEBUG_PRINTLN((String)"Sunrise ended after " + duration + " seconds.");
     sunriseLoopStep = 0;
     doSunrise = false;
+
+    // set default effect
+    doFire = true;
   }
 }
 
@@ -234,25 +243,73 @@ bool fire() {
     return false;
   }
 
-  uint16_t r = 255;
-  uint16_t g = r-40;
-  uint16_t b = 40;
+  uint16_t r = 200;
+  uint16_t g = r-80;
+  uint16_t b = 30;
 
   for (uint16_t i = 0; i < pixels.numPixels(); i++) {
-    uint16_t flicker = random(0,150);
+    uint16_t flicker = random(0,100);
     uint16_t r1 = r-flicker;
     uint16_t g1 = g-flicker;
     uint16_t b1 = b-flicker;
-    if(r1<0) r1=0;
-    if(g1<0) g1=0;
-    if(b1<0) b1=0;
+    if(r1>255) r1=0;
+    if(g1>255) g1=0;
+    if(b1>255) b1=0;
+    DEBUG_PRINT(r1);
+    DEBUG_PRINT(" ");
+    DEBUG_PRINT(g1);
+    DEBUG_PRINT(" ");
+    DEBUG_PRINTLN(b1);
     pixels.setPixelColor(i, pixels.Color(r1, g1, b1));
-    pixels.show();
   }
+  pixels.show();
 
   nextFireLoop = millis() + random(50,150);
 }
 
+// flash a color
+bool flash() {
+  if (! doFlash) {
+    // no sunrise happening!
+    flashStartTime = 0;
+    return false;
+  }
+  if (flashStartTime < 1) {
+    DEBUG_PRINTLN((String)"Flash starting");
+    flashStartTime = millis();
+    flashLoopStep = 0;
+    currentFadeStart = 0;
+    fadeCount = 0;
+    colorWipe (pixels.Color(0, 0, 0), 0);
+    currentColor[0] = 0;
+    currentColor[1] = 0;
+    currentColor[2] = 0;
+  }
+
+  int flashData[][4] = {
+    { 250, targetColor[0], targetColor[1], targetColor[2]},
+    { 500, targetColor[0], targetColor[1], targetColor[2]},
+    { 250, 0, 0, 0}
+  };
+
+  if (fade(currentColor, startColor, flashData[flashLoopStep][0], flashData[flashLoopStep][1], flashData[flashLoopStep][2], flashData[flashLoopStep][3])) {
+    flashLoopStep++;
+  }
+
+  int fadeSteps = sizeof(flashData) / sizeof(int) / 4;
+  if (flashLoopStep >= fadeSteps) {
+    // reset all variables
+    unsigned long duration = (millis() - flashStartTime) / 1000;
+    DEBUG_PRINTLN((String)"Flash ended after " + duration + " seconds.");
+    flashLoopStep = 0;
+    doFlash = false;
+
+    // set default effect
+    doFire = true;
+  }
+}
+
+// logic
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   unsigned int numOfOptions = 0;
   DEBUG_PRINT("Message arrived: Topic [");
@@ -269,43 +326,59 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINTLN(" options.");
 
   if ((char)payload[0] == '1') {
-      DEBUG_PRINTLN("Enabling sunrise");
-      doSunrise = true;
-      doFixedColor = false;
-      doFire = false;
+    DEBUG_PRINTLN("Enabling sunrise");
+    doSunrise = true;
+    doFixedColor = false;
+    doFire = false;
+    doFlash = false;
   } else if ((char)payload[0] == '2') {
-      // check for correct number of options
-      DEBUG_PRINTLN("Enabling fixed color");
-      doSunrise = false;
-      doFixedColor = true;
-      doFire = false;
+    // check for correct number of options
+    DEBUG_PRINTLN("Enabling fixed color");
+    doSunrise = false;
+    doFixedColor = true;
+    doFire = false;
+    doFlash = false;
 
-      String s = String((char*)payload);
-      colorWipe (pixels.Color(getValue(s,';',1).toInt(), getValue(s,';',2).toInt(), getValue(s,';',3).toInt()), getValue(s,';',4).toInt());
+    String s = String((char*)payload);
+    colorWipe (pixels.Color(getValue(s,';',1).toInt(), getValue(s,';',2).toInt(), getValue(s,';',3).toInt()), getValue(s,';',4).toInt());
   } else if ((char)payload[0] == '3') {
-      // not yet implemented
-      DEBUG_PRINTLN("Enabling fade to color");
-      doSunrise = false;
-      doFixedColor = false;
-      doFire = false;
+    // not yet implemented
+    DEBUG_PRINTLN("Enabling fade to color");
+    doSunrise = false;
+    doFixedColor = false;
+    doFire = false;
+    doFlash = false;
   } else if ((char)payload[0] == '4') {
-      // not yet implemented
-      DEBUG_PRINTLN("Enabling rainbow");
-      doSunrise = false;
-      doFixedColor = false;
-      doFire = false;
+    // not yet implemented
+    DEBUG_PRINTLN("Enabling rainbow");
+    doSunrise = false;
+    doFixedColor = false;
+    doFire = false;
+    doFlash = false;
   } else if ((char)payload[0] == '5') {
-      // not yet implemented
-      DEBUG_PRINTLN("Enabling fire");
-      doSunrise = false;
-      doFixedColor = false;
-      doFire = true;
+    DEBUG_PRINTLN("Enabling fire");
+    doSunrise = false;
+    doFixedColor = false;
+    doFlash = false;
+    doFire = true;
+    doFlash = false;
+  } else if ((char)payload[0] == '6') {
+    DEBUG_PRINTLN("Enabling flash");
+    doSunrise = false;
+    doFixedColor = false;
+    doFire = false;
+    doFlash = true;
+    String s = String((char*)payload);
+    targetColor[0] = getValue(s,';',1).toInt();
+    targetColor[1] = getValue(s,';',2).toInt();
+    targetColor[2] = getValue(s,';',3).toInt();
   } else if ((char)payload[0] == '0') {
-      DEBUG_PRINTLN("Disabling everything");
-      doSunrise = false;
-      doFixedColor = false;
-      doFire = false;
-      colorWipe (pixels.Color(0, 0, 0), 0);
+    DEBUG_PRINTLN("Disabling everything");
+    doSunrise = false;
+    doFixedColor = false;
+    doFire = false;
+    doFlash = false;
+    colorWipe (pixels.Color(0, 0, 0), 0);
   } else {
     DEBUG_PRINTLN("Unknown RGB command");
   }
@@ -384,6 +457,7 @@ void loop() {
   // Call RGB Strip functions
   sunrise();
   fire();
+  flash();
 
   // disabling the onboard led
   digitalWrite(LED_BUILTIN, HIGH);
