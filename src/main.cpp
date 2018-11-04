@@ -313,24 +313,13 @@ bool flash() {
 }
 
 bool run() {
-  // FIXME: direction not yet implemented!
   if (! doRun) {
-    // no run happening!
     return false;
   }
-//  uint8_t runLeds = 0;
-//  uint16_t runDelay = 0;
-// runIndex = 1
 
   if (nextRunLoop < millis()) {
     for(int i=0;i<NUMPIXELS;i++) {
-      DEBUG_PRINT(i);
-      DEBUG_PRINT(" % ");
-      DEBUG_PRINT(runLeds);
-      DEBUG_PRINT(" == ");
-      DEBUG_PRINTLN(runIndex);
-
-      if ((i % runLeds) == runIndex) {
+      if (((i + runIndex) % runLeds) == 0) {
         pixels.setPixelColor(i, pixels.Color(targetColor[0],targetColor[1],targetColor[2]));
       } else {
         pixels.setPixelColor(i, pixels.Color(startColor[0],startColor[1],startColor[2]));
@@ -338,9 +327,18 @@ bool run() {
     }
     pixels.show();
 
-    runIndex++;
-    if (runIndex > runLeds) {
-      runIndex = 0;
+    if (runDirection) {
+      runIndex++;
+    } else {
+      runIndex--;
+    }
+
+    if (runIndex == 0) {
+      if (runDirection) {
+        runIndex++;
+      } else {
+        runIndex--;
+      }
     }
 
     nextRunLoop = millis() + runDelay;
