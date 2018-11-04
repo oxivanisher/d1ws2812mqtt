@@ -368,6 +368,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFixedColor = false;
     doFire = false;
     doFlash = false;
+    doRun = false;
   } else if ((char)payload[0] == '2') {
     DEBUG_PRINTLN("Enabling fixed color");
     // options: red;green;blue;wait ms
