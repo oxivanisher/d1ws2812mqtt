@@ -149,19 +149,6 @@ String getValue(String data, char separator, int index) {
     return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
-// Thanks to https://stackoverflow.com/questions/3867890/count-character-occurrences-in-a-string
-int countSemicolons(String s) {
-  int count = 0;
-  int maxIndex = s.length();
-
-  for (int i = 0; i <= maxIndex; i++) {
-      if (s.charAt(i) == ';') {
-          count++;
-      }
-  }
-  return count;
-}
-
 // fill the neopixel dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
   for (uint16_t i = 0; i < pixels.numPixels(); i++) {
@@ -478,10 +465,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINT(getValue(s,';',3).toInt());
     DEBUG_PRINT(" indexes: ");
 
-    for (int i = 4; i < countSemicolons(s); i++) {
-      DEBUG_PRINT(getValue(s,';',i).toInt());
+    for (int i = 0; i <= (numOfOptions - 5); i++) {
+      DEBUG_PRINT(getValue(s,';',i + 4).toInt());
       DEBUG_PRINT(", ");
-      pixels.setPixelColor(getValue(s,';',i).toInt(), color);
+      pixels.setPixelColor(getValue(s,';',i + 4).toInt(), color);
     }
     pixels.show();
 
