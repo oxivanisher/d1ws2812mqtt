@@ -50,7 +50,7 @@ int sunriseLoopStep = 0;
 bool doFixedColor = false;
 
 // fire
-bool doFire = true;
+bool doFire = false;
 unsigned long nextFireLoop = 0;
 
 // run
@@ -147,6 +147,19 @@ String getValue(String data, char separator, int index) {
         }
     }
     return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+// Thanks to https://stackoverflow.com/questions/3867890/count-character-occurrences-in-a-string
+int countSemicolons(String s) {
+  int count = 0;
+  int maxIndex = s.length();
+
+  for (int i = 0; i <= maxIndex; i++) {
+      if (s.charAt(i) == ';') {
+          count++;
+      }
+  }
+  return count;
 }
 
 // fill the neopixel dots one after the other with a color
@@ -359,7 +372,15 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINT(numOfOptions);
   DEBUG_PRINTLN(" options.");
 
-  if ((char)payload[0] == '1') {
+  if ((char)payload[0] == '0') {
+    DEBUG_PRINTLN("Disabling everything");
+    doSunrise    = false;
+    doFixedColor = false;
+    doFire       = false;
+    doFlash      = false;
+    doRun        = false;
+    colorWipe (pixels.Color(0, 0, 0), 0);
+  } else if ((char)payload[0] == '1') {
     DEBUG_PRINTLN("Enabling sunrise");
     doSunrise = true;
     doFixedColor = false;
@@ -368,7 +389,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doRun = false;
   } else if ((char)payload[0] == '2') {
     DEBUG_PRINTLN("Enabling fixed color");
-    // options: red;green;blue;wait ms
+    // options: red;green;blue;wait ms;
     doSunrise    = false;
     doFixedColor = true;
     doFire       = false;
@@ -402,7 +423,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doRun        = false;
   } else if ((char)payload[0] == '6') {
     DEBUG_PRINTLN("Enabling flash");
-    // options: red;green;blue
+    // options: red;green;blue;
     doSunrise    = false;
     doFixedColor = false;
     doFire       = false;
@@ -415,7 +436,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     targetColor[2] = getValue(s,';',3).toInt();
   } else if ((char)payload[0] == '7') {
     DEBUG_PRINTLN("Enabling run");
-    // options: num of leds;delay;direction;acrive red;active green;active blue;passive red;passive green;passive blue
+    // options: num of leds;delay;direction;acrive red;active green;active blue;passive red;passive green;passive blue;
     doSunrise    = false;
     doFixedColor = false;
     doFire       = false;
@@ -436,14 +457,35 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     startColor[0] = getValue(s,';',7).toInt();
     startColor[1] = getValue(s,';',8).toInt();
     startColor[2] = getValue(s,';',9).toInt();
-  } else if ((char)payload[0] == '0') {
-    DEBUG_PRINTLN("Disabling everything");
+  } else if ((char)payload[0] == '8') {
+    DEBUG_PRINT("Enabling fixed LED color");
+    // options: red;green;blue;LED index;LED index;LED index;...
     doSunrise    = false;
-    doFixedColor = false;
+    doFixedColor = true;
     doFire       = false;
     doFlash      = false;
     doRun        = false;
-    colorWipe (pixels.Color(0, 0, 0), 0);
+
+    String s = String((char*)payload);
+
+    // add support for multiple leds
+    uint32_t color = pixels.Color(getValue(s,';',1).toInt(), getValue(s,';',2).toInt(), getValue(s,';',3).toInt());
+    DEBUG_PRINT(" color: r");
+    DEBUG_PRINT(getValue(s,';',1).toInt());
+    DEBUG_PRINT(" g");
+    DEBUG_PRINT(getValue(s,';',2).toInt());
+    DEBUG_PRINT(" b");
+    DEBUG_PRINT(getValue(s,';',3).toInt());
+    DEBUG_PRINT(" indexes: ");
+
+    for (int i = 4; i < countSemicolons(s); i++) {
+      DEBUG_PRINT(getValue(s,';',i).toInt());
+      DEBUG_PRINT(", ");
+      pixels.setPixelColor(getValue(s,';',i).toInt(), color);
+    }
+    pixels.show();
+
+    DEBUG_PRINTLN();
   } else {
     DEBUG_PRINTLN("Unknown RGB command");
   }
