@@ -300,6 +300,7 @@ bool flash() {
     // reset all variables
     unsigned long duration = (millis() - flashStartTime) / 1000;
     DEBUG_PRINTLN((String)"Flash ended after " + duration + " seconds.");
+    colorWipe (pixels.Color(0, 0, 0), 0);
     flashLoopStep = 0;
     doFlash = false;
 
