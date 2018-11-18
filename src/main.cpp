@@ -13,7 +13,7 @@
   #define DEBUG_PRINTLN(x)
 #endif
 
-#define PUBLISH_LOOP_SLEEP 10000
+#define PUBLISH_LOOP_SLEEP 30000
 
 // Initialize Adafruit_NeoPixel
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
