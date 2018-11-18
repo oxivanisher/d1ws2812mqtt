@@ -304,7 +304,7 @@ bool flash() {
     doFlash = false;
 
     // set default effect
-    doFire = true;
+    //doFire = true;
   }
 }
 
@@ -545,15 +545,9 @@ void loop() {
     }
   }
 
-  // enabling the onboard led
-  digitalWrite(LED_BUILTIN, LOW);
-
   // Call RGB Strip functions
   sunrise();
   fire();
   flash();
   run();
-
-  // disabling the onboard led
-  digitalWrite(LED_BUILTIN, HIGH);
 }
