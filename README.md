@@ -49,11 +49,11 @@ Fade from to a color.
 *Attributes:* None  
 Animated rainbow colors.
 
-### 5: Sunrise
+### 5: Fire
 *Attributes:*: None  
 Animated fire effect.
 
-### 6: Fixed
+### 6: Flash
 *Attributes:* red;green;blue;  
 Flash a color.
 
@@ -62,5 +62,5 @@ Flash a color.
 Animate running light.
 
 ### 8: Fixed LED
-*Attributes:* red;green;blue;LED index;LED index;LED index;... 
+*Attributes:* red;green;blue;LED index;LED index;LED index;...
 Fixed color for a single LED. Please be aware, than this is not as effective as the normal fixed effect, since it will call `pixel.show()` for every LED on its own, not to mention the MQTT overhead.
