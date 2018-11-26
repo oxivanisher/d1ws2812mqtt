@@ -13,7 +13,7 @@
   #define DEBUG_PRINTLN(x)
 #endif
 
-#define PUBLISH_LOOP_SLEEP 30000
+#define PUBLISH_LOOP_SLEEP 90000
 
 // Initialize Adafruit_NeoPixel
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
@@ -31,7 +31,6 @@ PubSubClient mqttClient(espClient);
 bool readyToUpload = false;
 long lastMsg = 0;
 
-
 // RBG function vars
 // general fade loop vars
 unsigned long currentFadeStart = 0;
@@ -40,6 +39,11 @@ uint8_t startColor[] = {0, 0, 0};
 uint8_t currentColor[] = {0, 0, 0};
 uint8_t targetColor[] = {0, 0, 0};
 uint8_t fadeCount = 0;
+
+// Save var for saving the default effect
+byte defaultPayload[255];
+unsigned int defaulLength;
+bool defaultSaved = false;
 
 // sunrise loop vars
 bool doSunrise = false;
@@ -65,6 +69,8 @@ uint8_t runIndex = 0;
 bool doFlash = false;
 unsigned long flashStartTime = 0;
 uint16_t flashLoopStep = 0;
+
+void runDefault();
 
 bool mqttReconnect() {
   // Loop until we're reconnected
@@ -109,6 +115,7 @@ bool mqttReconnect() {
       delay(2000);
     }
   }
+  return false;
 }
 
 bool wifiConnect() {
@@ -130,7 +137,6 @@ bool wifiConnect() {
   DEBUG_PRINTLN(" done");
   return true;
 }
-
 
 // helper functions
 // Thanks to https://gist.github.com/mattfelsen/9467420
@@ -194,11 +200,11 @@ bool fade(uint8_t currentColor[], uint8_t startColor[], uint32_t fadeDuration, u
 }
 
 // sunrise
-bool sunrise() {
+void sunrise() {
   if (! doSunrise) {
     // no sunrise happening!
     sunriseStartTime = 0;
-    return false;
+    return;
   }
   if (sunriseStartTime < 1) {
     DEBUG_PRINTLN((String)"Sunrise starting");
@@ -240,15 +246,15 @@ bool sunrise() {
 }
 
 // fire
-bool fire() {
+void fire() {
   if (! doFire) {
     // no fire happening!
     nextFireLoop = 0;
-    return false;
+    return;
   }
 
   if (millis() < nextFireLoop) {
-    return false;
+    return;
   }
 
   for (uint16_t i = 0; i < pixels.numPixels(); i++) {
@@ -267,11 +273,11 @@ bool fire() {
 }
 
 // flash a color
-bool flash() {
+void flash() {
   if (! doFlash) {
     // no flash happening!
     flashStartTime = 0;
-    return false;
+    return;
   }
   if (flashStartTime < 1) {
     DEBUG_PRINTLN((String)"Flash starting");
@@ -304,15 +310,14 @@ bool flash() {
     flashLoopStep = 0;
     doFlash = false;
 
-    // set default effect
-    //doFire = true;
+    runDefault();
   }
 }
 
 // running led
-bool run() {
+void run() {
   if (! doRun) {
-    return false;
+    return;
   }
 
   if (nextRunLoop < millis()) {
@@ -359,6 +364,9 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINT("] - Found ");
   DEBUG_PRINT(numOfOptions);
   DEBUG_PRINTLN(" options.");
+
+  // setting lastMsg to push the next publish cycle into the future
+  lastMsg = millis();
 
   if ((char)payload[0] == '0') {
     DEBUG_PRINTLN("Disabling everything");
@@ -466,7 +474,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     DEBUG_PRINT(getValue(s,';',3).toInt());
     DEBUG_PRINT(" indexes: ");
 
-    for (int i = 0; i <= (numOfOptions - 5); i++) {
+    for (unsigned int i = 0; i <= (numOfOptions - 5); i++) {
       DEBUG_PRINT(getValue(s,';',i + 4).toInt());
       DEBUG_PRINT(", ");
       pixels.setPixelColor(getValue(s,';',i + 4).toInt(), color);
@@ -474,8 +482,32 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     pixels.show();
 
     DEBUG_PRINTLN();
+  } else if ((char)payload[0] == 'Y') {
+    DEBUG_PRINTLN("Running default effect");
+    runDefault();
+  } else if ((char)payload[0] == 'Z') {
+    DEBUG_PRINT("Saving ");
+    for (unsigned int i = 0; i < length - 2; i++) {
+      DEBUG_PRINT((char)payload[i + 2]);
+      defaultPayload[i] = payload[i + 2];
+    }
+    DEBUG_PRINTLN(" as default effect");
+    defaulLength = length;
+    defaultSaved = true;
   } else {
     DEBUG_PRINTLN("Unknown RGB command");
+  }
+
+  //return false;
+}
+
+// default effect
+void runDefault() {
+  if (defaultSaved) {
+    DEBUG_PRINTLN("Running default effect");
+    mqttCallback("Default", defaultPayload, defaulLength);
+  } else {
+    DEBUG_PRINTLN("No default was saved");
   }
 }
 
