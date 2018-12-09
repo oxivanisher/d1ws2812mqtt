@@ -568,8 +568,12 @@ void loop() {
 
     if (readyToUpload) {
       DEBUG_PRINT("MQTT discovery publish loop:");
-      String clientMac = WiFi.macAddress();
-      if (mqttClient.publish("/d1ws2812/discovery", clientMac.c_str())) {
+
+      String clientMac = WiFi.macAddress(); // 17 chars
+      char topic[37] = "/d1ws2812/discovery/";
+      strcat(topic, clientMac.c_str());
+
+      if (mqttClient.publish(topic, VERSION, true)) {
         // Publishing values successful, removing them from cache
         DEBUG_PRINTLN(" successful");
       } else {
