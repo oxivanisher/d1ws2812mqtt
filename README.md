@@ -3,14 +3,16 @@ This sketch is for connecting D1 Minis with WS2812 RGB LEDs attached to a MQTT.
 
 ## MQTT interface
 ### Discovery
-It publishes its MAC address regularly to `/d1ws2812/discovery`.
+It publishes its MAC address regularly to `/d1ws2812/discovery/MAC` with the
+current version as value.
 
 ### Control
 It subscribes to two MQTT topics:
 * `/d1ws2812/all`
 * `/d1ws2812/MAC address`
 
-To enable a effect, send a semicolon separated string to one of the topics. Please be aware, that you have to end the attributes with a semicolon!
+To enable a effect, send a semicolon separated string to one of the topics.
+Please be aware, that you have to end the attributes with a semicolon!
 
 # Available effects
 ## index

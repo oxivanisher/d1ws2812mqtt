@@ -30,6 +30,7 @@ PubSubClient mqttClient(espClient);
 // Logic switches
 bool readyToUpload = false;
 long lastMsg = 0;
+bool initialPublish = false;
 
 // RBG function vars
 // general fade loop vars
@@ -561,8 +562,12 @@ void loop() {
     }
   }
 
-  // if readyToUpload, letste go!
-  if (now - lastMsg > PUBLISH_LOOP_SLEEP) {
+  if (initialPublish == false) {
+    lastMsg = PUBLISH_LOOP_SLEEP * -1 + 3000;
+  }
+
+  // if readyToUpload, letste go
+  if (now >= (lastMsg + PUBLISH_LOOP_SLEEP)) {
     // long loopDrift = (now - lastMsg) - PUBLISH_LOOP_SLEEP;
     lastMsg = now;
 
@@ -576,6 +581,8 @@ void loop() {
       if (mqttClient.publish(topic, VERSION, true)) {
         // Publishing values successful, removing them from cache
         DEBUG_PRINTLN(" successful");
+
+        initialPublish = true;
       } else {
         DEBUG_PRINTLN(" FAILED!");
       }
