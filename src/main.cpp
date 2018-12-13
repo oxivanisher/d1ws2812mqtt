@@ -158,9 +158,18 @@ String getValue(String data, char separator, int index) {
 
 // fill the neopixel dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
-  for (uint16_t i = 0; i < pixels.numPixels(); i++) {
-    delay(wait);
-    pixels.setPixelColor(i, c);
+  // since it is very slow to call pixels.show on 120 leds, only do that
+  // if it is required.
+  if (wait) {
+    for (uint16_t i = 0; i < pixels.numPixels(); i++) {
+      delay(wait);
+      pixels.setPixelColor(i, c);
+      pixels.show();
+    }
+  } else {
+    for (uint16_t i = 0; i < pixels.numPixels(); i++) {
+      pixels.setPixelColor(i, c);
+    }
     pixels.show();
   }
 }
@@ -175,7 +184,7 @@ bool fade(uint8_t currentColor[], uint8_t startColor[], uint32_t fadeDuration, u
     startColor[0] = currentColor[0];
     startColor[1] = currentColor[1];
     startColor[2] = currentColor[2];
-    Serial.print((String)"Fade " + fadeCount + " will take " + (currentFadeEnd - currentFadeStart) + " millis ");
+    DEBUG_PRINT((String)"Fade " + fadeCount + " will take " + (currentFadeEnd - currentFadeStart) + " millis ");
     DEBUG_PRINTLN((String)"from " + startColor[0] + ", " + startColor[1] + ", " + startColor[2] +" to " + redEnd + ", " + greenEnd + ", " + blueEnd);
   }
 
@@ -185,7 +194,6 @@ bool fade(uint8_t currentColor[], uint8_t startColor[], uint32_t fadeDuration, u
   currentColor[2] = map(now, currentFadeStart, currentFadeEnd, startColor[2], blueEnd);
 
   colorWipe (pixels.Color(currentColor[0], currentColor[1], currentColor[2]), 0);
-  pixels.show();
 
   if (millis() >= currentFadeEnd) {
     // current fade finished
