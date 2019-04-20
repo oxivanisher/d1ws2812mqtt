@@ -27,6 +27,7 @@ Please be aware, that you have to end the attributes with a semicolon!
 |  6 | Flash        | 0.1     |
 |  7 | Run          | 0.1     |
 |  8 | Fixed LED    | 0.1     |
+|  9 | RGB Cycle    | 0.2     |
 |  Y | run default  | 0.1     |
 |  Z | Save default | 0.1     |
 
@@ -69,6 +70,10 @@ Animate running light.
 ### 8: Fixed LED
 *Attributes:* red;green;blue;LED index;LED index;LED index;...
 Fixed color for a single LED. Please be aware, than this is not as effective as the normal fixed effect, since it will call `pixel.show()` for every LED on its own, not to mention the MQTT overhead.
+
+### 9: RGB Cycle
+*Attributes:* max brightness;loop delay
+Cycles trough all colors.
 
 ### Y: Run default
 *Attributes:* None

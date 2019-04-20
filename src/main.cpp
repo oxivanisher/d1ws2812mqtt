@@ -71,6 +71,15 @@ bool doFlash = false;
 unsigned long flashStartTime = 0;
 uint16_t flashLoopStep = 0;
 
+// RGB Cycle
+bool doCycle = false;
+unsigned long nextCycleLoop = 0;
+uint8_t cycleDecColour = 0;
+uint8_t cycleIncColour = 0;
+uint8_t cycleStep = 0;
+uint8_t cycleMaxBrightness = 0;
+uint16_t cycleDelay = 0;
+
 void runDefault();
 
 bool mqttReconnect() {
@@ -358,6 +367,39 @@ void run() {
 
 }
 
+// RGB Cycle
+void cycle() {
+  if (! doCycle) {
+    // no cycle happening!
+    nextCycleLoop = 0;
+    return;
+  }
+
+  if (millis() < nextCycleLoop) {
+    return;
+  }
+  // increase step (= brightness of leds)
+  cycleStep += 1;
+
+  // check if brightness is to high. if so, reset and iterate to next color pair.
+  if (cycleStep >= cycleMaxBrightness) {
+    cycleStep = 0;
+    if (cycleDecColour >= 3) {
+      cycleDecColour = 0;
+    } else {
+      cycleDecColour += 1;
+    }
+  }
+
+  cycleIncColour = cycleDecColour == 2 ? 0 : cycleDecColour + 1;
+
+  currentColor[cycleDecColour] = cycleMaxBrightness - cycleStep;
+  currentColor[cycleIncColour] = cycleStep;
+
+  colorWipe (pixels.Color(currentColor[0], currentColor[1], currentColor[2]), 0);
+  nextCycleLoop = millis() + cycleDelay;
+}
+
 // logic
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   unsigned int numOfOptions = 0;
@@ -384,6 +426,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire       = false;
     doFlash      = false;
     doRun        = false;
+    doCycle      = false;
     colorWipe (pixels.Color(0, 0, 0), 0);
   } else if ((char)payload[0] == '1') {
     DEBUG_PRINTLN("Enabling sunrise");
@@ -392,6 +435,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire = false;
     doFlash = false;
     doRun = false;
+    doCycle      = false;
   } else if ((char)payload[0] == '2') {
     DEBUG_PRINTLN("Enabling fixed color");
     // options: red;green;blue;wait ms;
@@ -400,7 +444,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire       = false;
     doFlash      = false;
     doRun        = false;
-
+    doCycle      = false;
     String s = String((char*)payload);
     colorWipe (pixels.Color(getValue(s,';',1).toInt(), getValue(s,';',2).toInt(), getValue(s,';',3).toInt()), getValue(s,';',4).toInt());
   } else if ((char)payload[0] == '3') {
@@ -411,6 +455,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire       = false;
     doFlash      = false;
     doRun        = false;
+    doCycle      = false;
   } else if ((char)payload[0] == '4') {
     // not yet implemented
     DEBUG_PRINTLN("Enabling rainbow");
@@ -419,6 +464,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire       = false;
     doFlash      = false;
     doRun        = false;
+    doCycle      = false;
   } else if ((char)payload[0] == '5') {
     DEBUG_PRINTLN("Enabling fire");
     doSunrise    = false;
@@ -426,6 +472,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire       = true;
     doFlash      = false;
     doRun        = false;
+    doCycle      = false;
   } else if ((char)payload[0] == '6') {
     DEBUG_PRINTLN("Enabling flash");
     // options: red;green;blue;
@@ -434,6 +481,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire       = false;
     doFlash      = true;
     doRun        = false;
+    doCycle      = false;
 
     String s = String((char*)payload);
     targetColor[0] = getValue(s,';',1).toInt();
@@ -447,6 +495,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire       = false;
     doFlash      = false;
     doRun        = true;
+    doCycle      = false;
 
     String s = String((char*)payload);
     runLeds = getValue(s,';',1).toInt();
@@ -470,6 +519,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFire       = false;
     doFlash      = false;
     doRun        = false;
+    doCycle      = false;
 
     String s = String((char*)payload);
 
@@ -491,6 +541,22 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     pixels.show();
 
     DEBUG_PRINTLN();
+  } else if ((char)payload[0] == '9') {
+    DEBUG_PRINT("Enabling RGB Cycling");
+    doSunrise    = false;
+    doFixedColor = false;
+    doFire       = false;
+    doFlash      = false;
+    doRun        = false;
+    doCycle      = true;
+
+    currentColor[0] = 0;
+    currentColor[1] = 0;
+    currentColor[2] = 0;
+
+    String s = String((char*)payload);
+    cycleMaxBrightness = getValue(s,';',1).toInt();
+    cycleDelay = getValue(s,';',2).toInt();
   } else if ((char)payload[0] == 'Y') {
     DEBUG_PRINTLN("Running default effect");
     runDefault();
@@ -602,4 +668,5 @@ void loop() {
   fire();
   flash();
   run();
+  cycle();
 }
