@@ -13,8 +13,6 @@
   #define DEBUG_PRINTLN(x)
 #endif
 
-#define PUBLISH_LOOP_SLEEP 90000
-
 // Initialize Adafruit_NeoPixel
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -83,6 +81,10 @@ uint16_t cycleDelay = 0;
 void runDefault();
 
 bool mqttReconnect() {
+  // Create a client ID based on the MAC address
+  String clientId = String("D1WS2812") + "-";
+  clientId += String(WiFi.macAddress());
+
   // Loop until we're reconnected
   int counter = 0;
   while (!mqttClient.connected()) {
@@ -94,16 +96,9 @@ bool mqttReconnect() {
 
     DEBUG_PRINT("Attempting MQTT connection...");
 
-    // Create a random client ID
-    String clientId = String("D1WS2812") + "-";
-    clientId += String(random(0xffff), HEX);
-
     // Attempt to connect
     if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
       DEBUG_PRINTLN("connected");
-      // Once connected, publish an announcement...
-      //mqttClient.publish("outTopic", "hello world");
-      // ... and resubscribe
 
       // subscribe to "all" topic
       mqttClient.subscribe("/d1ws2812/all", 1);
@@ -114,7 +109,6 @@ bool mqttReconnect() {
       String clientMac = WiFi.macAddress();
       strcat(topic, clientMac.c_str());
       mqttClient.subscribe(topic, 1);
-      //mqttClient.subscribe("/d1ws2812/mac", 1);
 
       return true;
     } else {
@@ -554,6 +548,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     currentColor[1] = 0;
     currentColor[2] = 0;
 
+    // reset vars so the cycle always starts in sync
+    cycleDecColour = 0;
+    cycleIncColour = 0;
+    cycleStep = 0;
+
     String s = String((char*)payload);
     cycleMaxBrightness = getValue(s,';',1).toInt();
     cycleDelay = getValue(s,';',2).toInt();
@@ -596,8 +595,10 @@ void setup() {
   // setup NeoPixel
   DEBUG_PRINTLN("Initializing LEDs");
   pixels.begin();
-  pixels.setBrightness(255);//change how bright here
-  pixels.setPixelColor(0, pixels.Color(255,0,0));
+  pixels.setBrightness(255);
+
+  // show system startup
+  colorWipe (pixels.Color(20, 0, 0), 0);
 
   // Start the Pub/Sub client
   mqttClient.setServer(MQTT_SERVER, MQTT_SERVERPORT);
@@ -605,61 +606,49 @@ void setup() {
 
   // initial delay to let millis not be 0
   delay(1);
-
-  // clear the strip
-  colorWipe (pixels.Color(0, 0, 0), 0);
 }
 
 void loop() {
-  // first, get current millis
-  long now = millis();
-  mqttClient.loop();
-
   // Check if the wifi is connected
   if (WiFi.status() != WL_CONNECTED) {
     DEBUG_PRINTLN("Calling wifiConnect() as it seems to be required");
     wifiConnect();
   }
 
-  // MQTT doing its stuff if the wifi is connected
-  if (WiFi.status() == WL_CONNECTED) {
-    //DEBUG_PRINT("Is the MQTT Client already connected? ");
-    if (!mqttClient.connected()) {
-      DEBUG_PRINTLN("MQTT is not connected, let's try to reconnect");
-      if (! mqttReconnect()) {
-        // This should not happen, but seems to...
-        DEBUG_PRINTLN("MQTT was unable to connect! Exiting the upload loop");
-      } else {
-        readyToUpload = true;
-        DEBUG_PRINTLN("MQTT successfully reconnected");
-      }
+  if (!mqttClient.connected()) {
+    DEBUG_PRINTLN("MQTT is not connected, let's try to reconnect");
+    if (! mqttReconnect()) {
+      // This should not happen, but seems to...
+      DEBUG_PRINTLN("MQTT was unable to connect! Exiting the upload loop");
+      // set warning color since we can not connect to mqtt
+      colorWipe (pixels.Color(15, 5, 0), 0);
+    } else {
+      // readyToUpload = true;
+      DEBUG_PRINTLN("MQTT successfully reconnected");
     }
   }
 
+  // mqtt loop
+  mqttClient.loop();
+
   if (initialPublish == false) {
-    lastMsg = PUBLISH_LOOP_SLEEP * -1 + 3000;
-  }
+    DEBUG_PRINT("MQTT discovery publish loop:");
 
-  // if readyToUpload, letste go
-  if (now >= (lastMsg + PUBLISH_LOOP_SLEEP)) {
-    // long loopDrift = (now - lastMsg) - PUBLISH_LOOP_SLEEP;
-    lastMsg = now;
+    String clientMac = WiFi.macAddress(); // 17 chars
+    char topic[37] = "/d1ws2812/discovery/";
+    strcat(topic, clientMac.c_str());
 
-    if (readyToUpload) {
-      DEBUG_PRINT("MQTT discovery publish loop:");
+    if (mqttClient.publish(topic, VERSION, true)) {
+      // Publishing values successful, removing them from cache
+      DEBUG_PRINTLN(" successful");
 
-      String clientMac = WiFi.macAddress(); // 17 chars
-      char topic[37] = "/d1ws2812/discovery/";
-      strcat(topic, clientMac.c_str());
+      initialPublish = true;
 
-      if (mqttClient.publish(topic, VERSION, true)) {
-        // Publishing values successful, removing them from cache
-        DEBUG_PRINTLN(" successful");
+      // show system startup
+      colorWipe (pixels.Color(0, 20, 0), 0);
 
-        initialPublish = true;
-      } else {
-        DEBUG_PRINTLN(" FAILED!");
-      }
+    } else {
+      DEBUG_PRINTLN(" FAILED!");
     }
   }
 
