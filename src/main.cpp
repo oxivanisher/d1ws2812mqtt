@@ -622,6 +622,8 @@ void loop() {
       DEBUG_PRINTLN("MQTT was unable to connect! Exiting the upload loop");
       // set warning color since we can not connect to mqtt
       colorWipe (pixels.Color(15, 5, 0), 0);
+      // force reconnect to mqtt
+      initialPublish = false;
     } else {
       // readyToUpload = true;
       DEBUG_PRINTLN("MQTT successfully reconnected");
