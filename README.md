@@ -1,6 +1,12 @@
 # D1 Mini WS2812 MQTT
 This sketch is for connecting D1 Minis with WS2812 RGB LEDs attached to a MQTT.
 
+## States
+The LEDs are used to display minimal connection state information:
+* Red: After startup, waiting for connection to MQTT server
+* Green: Connected to MQTT server
+* Orange: Lost connection to MQTT server
+
 ## MQTT interface
 ### Discovery
 It publishes its MAC address regularly to `/d1ws2812/discovery/MAC` with the
@@ -16,20 +22,21 @@ Please be aware, that you have to end the attributes with a semicolon!
 
 # Available effects
 ## index
-| ID | Name         | Version |
-|---:|--------------|---------|
-|  0 | Off          | 0.1     |
-|  1 | Sunrise      | 0.1     |
-|  2 | Fixed        | 0.1     |
-| *3*| *Fade*       | *0.1*   |
-| *4*|*Rainbow*     | *0.1*   |
-|  5 | Fire         | 0.1     |
-|  6 | Flash        | 0.1     |
-|  7 | Run          | 0.1     |
-|  8 | Fixed LED    | 0.1     |
-|  9 | RGB Cycle    | 0.2     |
-|  Y | run default  | 0.1     |
-|  Z | Save default | 0.1     |
+| ID | Name              | Version |
+|---:|-------------------|---------|
+|  0 | Off               | 0.1     |
+|  1 | Sunrise           | 0.1     |
+|  2 | Fixed             | 0.1     |
+| *3*| *Fade*            | *0.1*   |
+| *4*|*Rainbow*          | *0.1*   |
+|  5 | Fire              | 0.1     |
+|  6 | Flash             | 0.1     |
+|  7 | Run               | 0.1     |
+|  8 | Fixed LED         | 0.1     |
+|  9 | RGB Cycle reset   | 0.2     |
+|  a | RGB Cycle         | 0.2     |
+|  Y | run default       | 0.1     |
+|  Z | Save default      | 0.1     |
 
 
 ## Detailed description
@@ -71,9 +78,13 @@ Animate running light.
 *Attributes:* red;green;blue;LED index;LED index;LED index;...
 Fixed color for a single LED. Please be aware, than this is not as effective as the normal fixed effect, since it will call `pixel.show()` for every LED on its own, not to mention the MQTT overhead.
 
-### 9: RGB Cycle
+### 9: RGB Cycle reset
 *Attributes:* max brightness;loop delay
-Cycles trough all colors.
+Cycles trough all colors and starts always at the same color.
+
+### a: RGB Cycle
+*Attributes:* max brightness;loop delay
+Cycles trough all colors and continues at the last color.
 
 ### Y: Run default
 *Attributes:* None

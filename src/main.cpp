@@ -536,7 +536,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     DEBUG_PRINTLN();
   } else if ((char)payload[0] == '9') {
-    DEBUG_PRINT("Enabling RGB Cycling");
+    DEBUG_PRINT("Enabling RGB Cycling with reset");
     doSunrise    = false;
     doFixedColor = false;
     doFire       = false;
@@ -552,6 +552,27 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     cycleDecColour = 0;
     cycleIncColour = 0;
     cycleStep = 0;
+
+    String s = String((char*)payload);
+    cycleMaxBrightness = getValue(s,';',1).toInt();
+    cycleDelay = getValue(s,';',2).toInt();
+  } else if ((char)payload[0] == 'a') {
+    DEBUG_PRINT("Enabling RGB Cycling");
+    doSunrise    = false;
+    doFixedColor = false;
+    doFire       = false;
+    doFlash      = false;
+    doRun        = false;
+    doCycle      = true;
+
+    // currentColor[0] = 0;
+    // currentColor[1] = 0;
+    // currentColor[2] = 0;
+    //
+    // // reset vars so the cycle always starts in sync
+    // cycleDecColour = 0;
+    // cycleIncColour = 0;
+    // cycleStep = 0;
 
     String s = String((char*)payload);
     cycleMaxBrightness = getValue(s,';',1).toInt();
