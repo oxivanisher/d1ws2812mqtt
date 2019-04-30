@@ -35,6 +35,8 @@ Please be aware, that you have to end the attributes with a semicolon!
 |  8 | Fixed LED         | 0.1     |
 |  9 | RGB Cycle reset   | 0.2     |
 |  a | RGB Cycle         | 0.2     |
+|  b | RGB run reset     | 0.2     |
+|  c | RGB run           | 0.2     |
 |  Y | run default       | 0.1     |
 |  Z | Save default      | 0.1     |
 
@@ -71,8 +73,8 @@ Animated fire effect.
 Flash a color.
 
 ### 7: Run
-*Attributes:* num of leds;delay;direction;acrive red;active green;active blue;passive red;passive green;passive blue;  
-Animate running light.
+*Attributes:* num of leds;loop delay;direction;active red;active green;active blue;passive red;passive green;passive blue;  
+Animate running light. It is always one led with the active color in <num of leds> in the passive color.
 
 ### 8: Fixed LED
 *Attributes:* red;green;blue;LED index;LED index;LED index;...
@@ -85,6 +87,15 @@ Cycles trough all colors and starts always at the same color.
 ### a: RGB Cycle
 *Attributes:* max brightness;loop delay
 Cycles trough all colors and continues at the last color.
+
+### b: RGB run reset
+*Attributes:* num of leds;loop delay;direction;max brightness;
+Cycles trough all colors and starts always at the same color for the run effect. The secondary "color" is always switched off LEDs (0;0;0).
+
+### c: RGB run
+*Attributes:* num of leds;loop delay;direction;max brightness;
+Cycles trough all colors and continues at the last color for the run effect. The secondary "color" is always switched off LEDs (0;0;0).
+
 
 ### Y: Run default
 *Attributes:* None
