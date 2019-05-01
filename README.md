@@ -89,11 +89,11 @@ Cycles trough all colors and starts always at the same color.
 Cycles trough all colors and continues at the last color.
 
 ### b: RGB run reset
-*Attributes:* num of leds;loop delay;direction;max brightness;
+*Attributes:* num of leds;run loop dely;direction;max brightness;rgb cycle delay
 Cycles trough all colors and starts always at the same color for the run effect. The secondary "color" is always switched off LEDs (0;0;0).
 
 ### c: RGB run
-*Attributes:* num of leds;loop delay;direction;max brightness;
+*Attributes:* num of leds;run loop dely;direction;max brightness;rgb cycle delay
 Cycles trough all colors and continues at the last color for the run effect. The secondary "color" is always switched off LEDs (0;0;0).
 
 

@@ -46,10 +46,12 @@ uint8_t fadeCurrentColor[] = {0, 0, 0};
 uint8_t fadeCount = 0;
 
 // RGB Cycle general control (used for cycle and RGB run effect)
-unsigned long nextRGBCycleLoop = 0;
+unsigned long diffRgbLoop = 0;
+unsigned long lastRgbLoop = 0;
+// unsigned long nextRgbLoop = 0;
 uint8_t rgbCurrentColor[] = {0, 0, 0};
-uint8_t rgbCycleStep = 0;
-uint8_t rgBycleMaxBrightness = 0;
+uint16_t rgbCycleStep = 0;
+uint8_t rgbCycleMaxBrightness = 0;
 uint8_t rgbCycleDecColour = 0;
 uint8_t rgbCycleIncColour = 0;
 
@@ -88,13 +90,13 @@ uint8_t flashColor[] = {0, 0, 0};
 uint8_t flashCurrentColor[] = {0, 0, 0};
 
 // RGB Cycle effect control
-bool doCycle = false;
-unsigned long nextCycleLoop = 0;
-uint16_t cycleDelay = 0;
-uint8_t cycleColor[] = {0, 0, 0};
+bool doRgbCycle = false;
+uint16_t rgbCycleDelay = 0;
 
 // RGB Run
 bool doRgbRun = false;
+// RGB Cycle (cycle vars, non RGB)
+unsigned long nextCycleLoop = 0;
 
 void runDefault();
 
@@ -346,13 +348,27 @@ void flash() {
 
 // RGB Cycle loop
 void rgbCycle() {
-  // increase step (= brightness of leds)
-  rgbCycleStep += 1;
+  if ( ! doRgbRun && ! doRgbCycle ) { return; }
+  diffRgbLoop = millis() - lastRgbLoop;
+
+  if ( diffRgbLoop >= rgbCycleDelay ) {
+    lastRgbLoop = millis();
+    DEBUG_PRINT("delay: ");
+    DEBUG_PRINT(rgbCycleDelay);
+    rgbCycleStep += int(diffRgbLoop / rgbCycleDelay);
+  } else {
+    return;
+  }
+
+  DEBUG_PRINT("\tdiff: ");
+  DEBUG_PRINT(diffRgbLoop);
+  DEBUG_PRINT("\tstep: ");
+  DEBUG_PRINT(rgbCycleStep);
 
   // check if brightness is to high. if so, reset and iterate to next color pair.
-  if (rgbCycleStep >= rgBycleMaxBrightness) {
-    rgbCycleStep = 0;
-    if (rgbCycleDecColour >= 3) {
+  if (rgbCycleStep >= rgbCycleMaxBrightness) {
+    rgbCycleStep = rgbCycleStep - rgbCycleMaxBrightness;
+    if (rgbCycleDecColour == 2) {
       rgbCycleDecColour = 0;
     } else {
       rgbCycleDecColour += 1;
@@ -360,25 +376,23 @@ void rgbCycle() {
   }
 
   rgbCycleIncColour = rgbCycleDecColour == 2 ? 0 : rgbCycleDecColour + 1;
-
-  rgbCurrentColor[rgbCycleDecColour] = rgBycleMaxBrightness - rgbCycleStep;
+  rgbCurrentColor[rgbCycleDecColour] = rgbCycleMaxBrightness - rgbCycleStep;
   rgbCurrentColor[rgbCycleIncColour] = rgbCycleStep;
+
+  DEBUG_PRINT("\tr: ");
+  DEBUG_PRINT(rgbCurrentColor[0]);
+  DEBUG_PRINT("\tg: ");
+  DEBUG_PRINT(rgbCurrentColor[1]);
+  DEBUG_PRINT("\tb: ");
+  DEBUG_PRINTLN(rgbCurrentColor[2]);
 }
 
 // running led
 void run() {
-  if (! doRun && ! doRgbRun ) {
-    nextRunLoop = 0;
-    return;
-  }
-
-  if (millis() < nextRunLoop) {
-    return;
-  }
+  if (! doRun && ! doRgbRun ) { return; }
+  if (millis() < nextRunLoop) { return; }
 
   if ( doRgbRun ) {
-    rgbCycle();
-
     activeRunColor[0] = rgbCurrentColor[0];
     activeRunColor[1] = rgbCurrentColor[1];
     activeRunColor[2] = rgbCurrentColor[2];
@@ -408,29 +422,17 @@ void run() {
   }
 
   nextRunLoop = millis() + runDelay;
-
 }
 
 // RGB Cycle effect
 void cycle() {
-  if (! doCycle) {
-    // no cycle happening!
-    nextCycleLoop = 0;
-    return;
-  }
-
-  if (millis() < nextCycleLoop) {
-    return;
-  }
-
-  rgbCycle();
-
+  if (! doRgbCycle) { return; }
   colorWipe (pixels.Color(rgbCurrentColor[0], rgbCurrentColor[1], rgbCurrentColor[2]), 0);
-  nextCycleLoop = millis() + cycleDelay;
 }
 
 // logic
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  payload[length] = '\0';
   unsigned int numOfOptions = 0;
   DEBUG_PRINT("Message arrived: Topic [");
   DEBUG_PRINT(topic);
@@ -456,7 +458,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = false;
+    doRgbCycle   = false;
     colorWipe (pixels.Color(0, 0, 0), 0);
   } else if ((char)payload[0] == '1') {
     DEBUG_PRINTLN("Enabling sunrise");
@@ -466,7 +468,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = false;
+    doRgbCycle   = false;
   } else if ((char)payload[0] == '2') {
     DEBUG_PRINTLN("Enabling fixed color");
     // options: red;green;blue;wait ms;
@@ -476,7 +478,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = false;
+    doRgbCycle   = false;
     s = String((char*)payload);
     // String s = String((char*)payload);
     colorWipe (pixels.Color(getValue(s,';',1).toInt(), getValue(s,';',2).toInt(), getValue(s,';',3).toInt()), getValue(s,';',4).toInt());
@@ -489,7 +491,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = false;
+    doRgbCycle   = false;
   } else if ((char)payload[0] == '4') {
     // not yet implemented
     DEBUG_PRINTLN("Enabling rainbow");
@@ -499,7 +501,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = false;
+    doRgbCycle   = false;
   } else if ((char)payload[0] == '5') {
     DEBUG_PRINTLN("Enabling fire");
     doSunrise    = false;
@@ -508,7 +510,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = false;
+    doRgbCycle   = false;
   } else if ((char)payload[0] == '6') {
     DEBUG_PRINTLN("Enabling flash");
     // options: red;green;blue;
@@ -518,7 +520,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = true;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = false;
+    doRgbCycle   = false;
 
     s = String((char*)payload);
     flashColor[0] = getValue(s,';',1).toInt();
@@ -533,7 +535,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = true;
     doRgbRun     = false;
-    doCycle      = false;
+    doRgbCycle   = false;
 
     s = String((char*)payload);
     runLeds = getValue(s,';',1).toInt();
@@ -572,7 +574,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = false;
+    doRgbCycle   = false;
 
     s = String((char*)payload);
 
@@ -595,6 +597,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     DEBUG_PRINTLN();
   } else if ((char)payload[0] == '9') {
+    //max brightness;loop delay
     DEBUG_PRINT("Enabling RGB Cycling with reset");
     doSunrise    = false;
     doFixedColor = false;
@@ -602,7 +605,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = true;
+    doRgbCycle   = true;
 
     rgbCurrentColor[0] = 0;
     rgbCurrentColor[1] = 0;
@@ -610,13 +613,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     // reset vars so the cycle always starts in sync
     rgbCycleDecColour = 0;
-    // rgbCycleIncColour = 0;
     rgbCycleStep = 0;
 
     s = String((char*)payload);
-    rgBycleMaxBrightness = getValue(s,';',1).toInt();
-    cycleDelay = getValue(s,';',2).toInt();
+    rgbCycleMaxBrightness = getValue(s,';',1).toInt();
+    rgbCycleDelay = getValue(s,';',2).toInt();
   } else if ((char)payload[0] == 'a') {
+    //max brightness;loop delay
     DEBUG_PRINT("Enabling RGB Cycling");
     doSunrise    = false;
     doFixedColor = false;
@@ -624,22 +627,22 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     doFlash      = false;
     doRun        = false;
     doRgbRun     = false;
-    doCycle      = true;
+    doRgbCycle   = true;
 
     s = String((char*)payload);
-    rgBycleMaxBrightness = getValue(s,';',1).toInt();
-    cycleDelay = getValue(s,';',2).toInt();
+    rgbCycleMaxBrightness = getValue(s,';',1).toInt();
+    rgbCycleDelay = getValue(s,';',2).toInt();
+
   } else if ((char)payload[0] == 'b') {
-    //num of leds;loop delay;direction;max brightness;
+    //num of leds;run loop dely;direction;max brightness;rgb cycle delay
     DEBUG_PRINT("Enabling RGB run reset");
-    //num of leds;loop delay;direction;max brightness;
     doSunrise    = false;
     doFixedColor = false;
     doFire       = false;
     doFlash      = false;
     doRun        = false;
     doRgbRun     = true;
-    doCycle      = false;
+    doRgbCycle   = false;
 
     s = String((char*)payload);
     runLeds = getValue(s,';',1).toInt();
@@ -649,7 +652,15 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     } else {
       runDirection = false;
     }
-    rgBycleMaxBrightness = getValue(s,';',4).toInt();
+    rgbCycleMaxBrightness = getValue(s,';',4).toInt();
+    rgbCycleDelay = getValue(s,';',5).toInt();
+    DEBUG_PRINT(s);
+    DEBUG_PRINT(" -- ");
+    DEBUG_PRINTLN(rgbCycleDelay);
+
+    activeRunColor[0] = 0;
+    activeRunColor[1] = 0;
+    activeRunColor[2] = 0;
 
     inactiveRunColor[0] = 0;
     inactiveRunColor[1] = 0;
@@ -661,19 +672,18 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     // reset vars so the cycle always starts in sync
     rgbCycleDecColour = 0;
-    // rgbCycleIncColour = 0;
     rgbCycleStep = 0;
 
   } else if ((char)payload[0] == 'c') {
-    //num of leds;loop delay;direction;max brightness;
-    DEBUG_PRINT("Enabling RGB run reset");
+    //num of leds;run loop dely;direction;max brightness;rgb cycle delay
+    DEBUG_PRINT("Enabling RGB run");
     doSunrise    = false;
     doFixedColor = false;
     doFire       = false;
     doFlash      = false;
     doRun        = false;
     doRgbRun     = true;
-    doCycle      = false;
+    doRgbCycle   = false;
 
     s = String((char*)payload);
     runLeds = getValue(s,';',1).toInt();
@@ -683,7 +693,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     } else {
       runDirection = false;
     }
-    rgBycleMaxBrightness = getValue(s,';',4).toInt();
+    rgbCycleMaxBrightness = getValue(s,';',4).toInt();
+    rgbCycleDelay = getValue(s,';',5).toInt();
 
   } else if ((char)payload[0] == 'Y') {
     DEBUG_PRINTLN("Running default effect");
@@ -784,6 +795,7 @@ void loop() {
   }
 
   // Call RGB Strip functions
+  rgbCycle();
   sunrise();
   fire();
   flash();
