@@ -614,6 +614,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     // reset vars so the cycle always starts in sync
     rgbCycleDecColour = 0;
     rgbCycleStep = 0;
+    lastRgbLoop = millis();
 
     s = String((char*)payload);
     rgbCycleMaxBrightness = getValue(s,';',1).toInt();
@@ -632,6 +633,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     s = String((char*)payload);
     rgbCycleMaxBrightness = getValue(s,';',1).toInt();
     rgbCycleDelay = getValue(s,';',2).toInt();
+    lastRgbLoop = millis();
 
   } else if ((char)payload[0] == 'b') {
     //num of leds;run loop dely;direction;max brightness;rgb cycle delay
@@ -654,9 +656,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
     rgbCycleMaxBrightness = getValue(s,';',4).toInt();
     rgbCycleDelay = getValue(s,';',5).toInt();
-    DEBUG_PRINT(s);
-    DEBUG_PRINT(" -- ");
-    DEBUG_PRINTLN(rgbCycleDelay);
+
+    // reset vars so the cycle always starts in sync
+    rgbCycleDecColour = 0;
+    rgbCycleStep = 0;
+    lastRgbLoop = millis();
 
     activeRunColor[0] = 0;
     activeRunColor[1] = 0;
@@ -669,10 +673,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     rgbCurrentColor[0] = 0;
     rgbCurrentColor[1] = 0;
     rgbCurrentColor[2] = 0;
-
-    // reset vars so the cycle always starts in sync
-    rgbCycleDecColour = 0;
-    rgbCycleStep = 0;
 
   } else if ((char)payload[0] == 'c') {
     //num of leds;run loop dely;direction;max brightness;rgb cycle delay
@@ -695,6 +695,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
     rgbCycleMaxBrightness = getValue(s,';',4).toInt();
     rgbCycleDelay = getValue(s,';',5).toInt();
+    lastRgbLoop = millis();
 
   } else if ((char)payload[0] == 'Y') {
     DEBUG_PRINTLN("Running default effect");
