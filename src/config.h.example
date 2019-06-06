@@ -3,7 +3,7 @@
 
   // Development settings
   //#define DEBUG
-  #define VERSION         0.2
+  #define VERSION         "0.2"
   #define SERIAL_BAUD     115200
 
   /************************* WiFi Access Point *********************************/
