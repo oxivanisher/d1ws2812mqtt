@@ -14,7 +14,7 @@
 #endif
 
 // Initialize Adafruit_NeoPixel
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Create an ESP8266 WiFiClient class to connect to the MQTT server.
 WiFiClient espClient;
@@ -97,6 +97,23 @@ uint16_t rgbCycleDelay = 0;
 bool doRgbRun = false;
 // RGB Cycle (cycle vars, non RGB)
 unsigned long nextCycleLoop = 0;
+
+unsigned long nextVoltageLoop = 0;
+float readVoltage() {
+	int sensor = analogRead(VOLT_PIN);
+	float voltage = sensor * 3.3 / 1024;
+}
+
+unsigned long beepOn = 0;
+unsigned long beepOff = 0;
+void beepCheck() {
+  if (millis() > beepOn) {
+    tone(BUZZ_PIN, 2000); // Send 2KHz sound signal...
+  }
+  if (millis() > beepOff) {
+    noTone(BUZZ_PIN);     // Stop sound...
+  }
+}
 
 void runDefault();
 
@@ -745,6 +762,9 @@ void setup() {
   mqttClient.setServer(MQTT_SERVER, MQTT_SERVERPORT);
   mqttClient.setCallback(mqttCallback);
 
+  // Set buzzer pin to output
+  pinMode(BUZZ_PIN, OUTPUT);
+
   // initial delay to let millis not be 0
   delay(1);
 }
@@ -768,6 +788,28 @@ void loop() {
     } else {
       // readyToUpload = true;
       DEBUG_PRINTLN("MQTT successfully reconnected");
+    }
+  }
+
+  // read voltage if required
+  if (millis() >= nextVoltageLoop) {
+    float volt = readVoltage();
+
+    char volt_char[10];
+    sprintf(volt_char, "%G", volt);
+
+    String clientMac = WiFi.macAddress(); // 17 chars
+    char topic[37] = "/d1ws2812/voltage/";
+    strcat(topic, clientMac.c_str());
+
+    DEBUG_PRINT("Voltage read: ");
+    DEBUG_PRINTLN(volt_char);
+
+    beepOn = millis() + 1;
+    beepOff = millis() + 501;
+
+    if (mqttClient.publish(topic, volt_char, true)) {
+      nextVoltageLoop = millis() + 30000;
     }
   }
 
@@ -802,4 +844,7 @@ void loop() {
   flash();
   run();
   cycle();
+
+  // Beep check called
+  beepCheck();
 }

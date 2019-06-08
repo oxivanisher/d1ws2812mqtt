@@ -19,9 +19,15 @@
   #define MQTT_USERNAME   ""
   #define MQTT_PASSWORD   ""
 
-
-  #define PIN D2
+  // LED Pin (D2 on old boards, D8 for the battery board)
+  #define LED_PIN D2
   // How many NeoPixels are attached to the Arduino?
-  #define NUMPIXELS 5
+  #define NUMPIXELS 69
+
+  // Buzzer PIN for the battery board, default D7
+  #define BUZZ_PIN D7
+
+  // Voltage sensor PIN for the battery board, default A0
+  #define VOLT_PIN A0
 
 #endif
