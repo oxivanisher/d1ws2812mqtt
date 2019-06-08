@@ -104,15 +104,15 @@ float readVoltage() {
 	float voltage = sensor * 3.3 / 1024;
 }
 
-unsigned long beepOn = 0;
 unsigned long beepOff = 0;
 void beepCheck() {
-  if (millis() > beepOn) {
-    tone(BUZZ_PIN, 2000); // Send 2KHz sound signal...
-  }
   if (millis() > beepOff) {
     noTone(BUZZ_PIN);     // Stop sound...
   }
+}
+void beep(int freq, int duration) {
+  beepOff = millis() + duration;
+  tone(BUZZ_PIN, freq);
 }
 
 void runDefault();
@@ -755,15 +755,15 @@ void setup() {
   pixels.begin();
   pixels.setBrightness(255);
 
+  // Set buzzer pin to output
+  pinMode(BUZZ_PIN, OUTPUT);
+
   // show system startup
   colorWipe (pixels.Color(20, 0, 0), 0);
 
   // Start the Pub/Sub client
   mqttClient.setServer(MQTT_SERVER, MQTT_SERVERPORT);
   mqttClient.setCallback(mqttCallback);
-
-  // Set buzzer pin to output
-  pinMode(BUZZ_PIN, OUTPUT);
 
   // initial delay to let millis not be 0
   delay(1);
@@ -795,20 +795,33 @@ void loop() {
   if (millis() >= nextVoltageLoop) {
     float volt = readVoltage();
 
-    char volt_char[10];
-    sprintf(volt_char, "%G", volt);
+    char voltChar[10];
+    sprintf(voltChar, "%d", volt);
 
     String clientMac = WiFi.macAddress(); // 17 chars
     char topic[37] = "/d1ws2812/voltage/";
     strcat(topic, clientMac.c_str());
 
     DEBUG_PRINT("Voltage read: ");
-    DEBUG_PRINTLN(volt_char);
+    DEBUG_PRINTLN(voltChar);
 
-    beepOn = millis() + 1;
-    beepOff = millis() + 501;
 
-    if (mqttClient.publish(topic, volt_char, true)) {
+    if (volt == 0.0) {
+      DEBUG_PRINTLN("No voltage could be read");
+    } else if (volt == 0.0) {
+      unsigned cells = (volt / 3.2);
+      float cellVoltage = (volt / cells);
+      DEBUG_PRINT("Calculated cells: ");
+      DEBUG_PRINTLN(cells);
+      DEBUG_PRINT("Calculated cell voltage: ");
+      DEBUG_PRINTLN(cellVoltage);
+
+      if (cellVoltage < 3.6) {
+        beep(2000, 500);
+      }
+    }
+
+    if (mqttClient.publish(topic, voltChar, true)) {
       nextVoltageLoop = millis() + 30000;
     }
   }
@@ -831,6 +844,7 @@ void loop() {
 
       // show system startup
       colorWipe (pixels.Color(0, 20, 0), 0);
+      beep(1500, 250);
 
     } else {
       DEBUG_PRINTLN(" FAILED!");
