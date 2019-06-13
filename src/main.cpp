@@ -100,8 +100,10 @@ unsigned long nextCycleLoop = 0;
 
 unsigned long nextVoltageLoop = 0;
 float readVoltage() {
-	int sensor = analogRead(VOLT_PIN);
-	float voltage = sensor * 3.3 / 1024;
+  DEBUG_PRINT("A0: ");
+  DEBUG_PRINTLN(analogRead(VOLT_PIN));
+  // float version of map()
+  return ((float)analogRead(VOLT_PIN) - 0.0) * (28.0 - 0.0) / (1024.0 - 0.0);
 }
 
 unsigned long beepOff = 0;
@@ -802,7 +804,9 @@ void loop() {
     char topic[37] = "/d1ws2812/voltage/";
     strcat(topic, clientMac.c_str());
 
-    DEBUG_PRINT("Voltage read: ");
+    DEBUG_PRINT("Voltage read in float: ");
+    DEBUG_PRINT(volt);
+    DEBUG_PRINT(" for MQTT: ");
     DEBUG_PRINTLN(voltChar);
 
 
