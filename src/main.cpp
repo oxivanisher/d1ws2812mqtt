@@ -100,8 +100,6 @@ unsigned long nextCycleLoop = 0;
 
 unsigned long nextVoltageLoop = 0;
 float readVoltage() {
-  DEBUG_PRINT("A0: ");
-  DEBUG_PRINTLN(analogRead(VOLT_PIN));
   // float version of map()
   return ((float)analogRead(VOLT_PIN) - 0.0) * (28.0 - 0.0) / (1024.0 - 0.0);
 }
@@ -797,31 +795,31 @@ void loop() {
   if (millis() >= nextVoltageLoop) {
     float volt = readVoltage();
 
-    char voltChar[10];
-    sprintf(voltChar, "%d", volt);
+    char voltChar[5];
+    dtostrf(volt, 5, 3, voltChar);
 
     String clientMac = WiFi.macAddress(); // 17 chars
     char topic[37] = "/d1ws2812/voltage/";
     strcat(topic, clientMac.c_str());
 
-    DEBUG_PRINT("Voltage read in float: ");
-    DEBUG_PRINT(volt);
-    DEBUG_PRINT(" for MQTT: ");
-    DEBUG_PRINTLN(voltChar);
-
+    DEBUG_PRINT("Voltage: ");
+    DEBUG_PRINTLN(volt);
 
     if (volt == 0.0) {
       DEBUG_PRINTLN("No voltage could be read");
-    } else if (volt == 0.0) {
+    } else {
       unsigned cells = (volt / 3.2);
-      float cellVoltage = (volt / cells);
       DEBUG_PRINT("Calculated cells: ");
       DEBUG_PRINTLN(cells);
-      DEBUG_PRINT("Calculated cell voltage: ");
-      DEBUG_PRINTLN(cellVoltage);
 
-      if (cellVoltage < 3.6) {
-        beep(2000, 500);
+      if (cells > 0) {
+        float cellVoltage = (volt / cells);
+        DEBUG_PRINT("Calculated cell voltage: ");
+        DEBUG_PRINTLN(cellVoltage);
+
+        if (cellVoltage < 3.6) {
+          beep(2000, 5000);
+        }
       }
     }
 
@@ -848,7 +846,7 @@ void loop() {
 
       // show system startup
       colorWipe (pixels.Color(0, 20, 0), 0);
-      beep(1500, 250);
+      beep(2500, 800);
 
     } else {
       DEBUG_PRINTLN(" FAILED!");
