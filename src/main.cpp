@@ -774,6 +774,7 @@ void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     DEBUG_PRINTLN("Calling wifiConnect() as it seems to be required");
     wifiConnect();
+    DEBUG_PRINTLN("My MAC: " + String(WiFi.macAddress()));
   }
 
   if (!mqttClient.connected()) {
