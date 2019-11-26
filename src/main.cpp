@@ -237,9 +237,11 @@ bool fade(uint8_t fadeCurrentColor[], uint8_t fadeStartColor[], uint32_t fadeDur
 
   if (millis() >= currentFadeEnd) {
     // current fade finished
-    unsigned long endTime = millis();
-    unsigned long fadeDuration = (endTime - currentFadeStart) / 1000;
-    DEBUG_PRINTLN((String)"Fade " + fadeCount + " ended after " + fadeDuration + " seconds.");
+    #ifdef DEBUG
+      unsigned long endTime = millis();
+      unsigned long fadeDuration = (endTime - currentFadeStart) / 1000;
+      DEBUG_PRINTLN((String)"Fade " + fadeCount + " ended after " + fadeDuration + " seconds.");
+    #endif
     currentFadeStart = 0;
     return true;
   } else {
@@ -284,8 +286,10 @@ void sunrise() {
   int fadeSteps = sizeof(sunriseData) / sizeof(int) / 4;
   if (sunriseLoopStep >= fadeSteps) {
     // reset all variables
-    unsigned long duration = (millis() - sunriseStartTime) / 1000;
-    DEBUG_PRINTLN((String)"Sunrise ended after " + duration + " seconds.");
+    #ifdef DEBUG
+      unsigned long duration = (millis() - sunriseStartTime) / 1000;
+      DEBUG_PRINTLN((String)"Sunrise ended after " + duration + " seconds.");
+    #endif
     sunriseLoopStep = 0;
     doSunrise = false;
 
@@ -353,8 +357,10 @@ void flash() {
   int fadeSteps = sizeof(flashData) / sizeof(int) / 4;
   if (flashLoopStep >= fadeSteps) {
     // reset all variables
-    unsigned long duration = (millis() - flashStartTime) / 1000;
-    DEBUG_PRINTLN((String)"Flash ended after " + duration + " seconds.");
+    #ifdef DEBUG
+      unsigned long duration = (millis() - flashStartTime) / 1000;
+      DEBUG_PRINTLN((String)"Flash ended after " + duration + " seconds.");
+    #endif
     colorWipe (pixels.Color(0, 0, 0), 0);
     flashLoopStep = 0;
     doFlash = false;
