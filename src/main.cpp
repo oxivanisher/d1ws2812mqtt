@@ -783,7 +783,7 @@ void loop() {
     DEBUG_PRINTLN("My MAC: " + String(WiFi.macAddress()));
   }
 
-  if (!mqttClient.connected()) {
+  if ((WiFi.status() != WL_CONNECTED) && (!mqttClient.connected())) {
     DEBUG_PRINTLN("MQTT is not connected, let's try to reconnect");
     if (! mqttReconnect()) {
       // This should not happen, but seems to...
@@ -830,7 +830,7 @@ void loop() {
       }
     }
 
-    if (initialPublish) {
+    if (initialPublish == false) {
       mqttClient.publish(topic, voltChar, true);
     }
 
