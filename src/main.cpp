@@ -830,9 +830,11 @@ void loop() {
       }
     }
 
-    if (mqttClient.publish(topic, voltChar, true)) {
-      nextVoltageLoop = millis() + 30000;
+    if (initialPublish) {
+      mqttClient.publish(topic, voltChar, true);
     }
+
+    nextVoltageLoop = millis() + 30000;
   }
 
   // mqtt loop
