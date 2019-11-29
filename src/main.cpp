@@ -121,9 +121,6 @@ void beep(int freq, int duration) {
 void runDefault();
 
 bool mqttReconnect() {
-  // For a clean start, disconnect first
-  mqttClient.disconnect();
-
   // Create a client ID based on the MAC address
   String clientId = String("D1WS2812") + "-";
   clientId += String(WiFi.macAddress());
