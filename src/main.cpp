@@ -26,6 +26,9 @@ PubSubClient mqttClient(espClient);
 // used for splitting arguments to effects
 String s = String();
 
+// Variable to store voltage
+float lastVolt = 0.0;
+
 // Logic switches
 bool readyToUpload = false;
 long lastMsg = 0;
@@ -823,7 +826,10 @@ void loop() {
 
     if (volt == 0.0) {
       DEBUG_PRINTLN("No voltage could be read");
+    } else if (lastVolt == volt) {
+      DEBUG_PRINTLN("Voltage did not change");
     } else {
+      lastVolt = volt;
       unsigned cells = (volt / 3.2);
       DEBUG_PRINT("Calculated cells: ");
       DEBUG_PRINTLN(cells);
@@ -837,19 +843,19 @@ void loop() {
           beep(2000, 5000);
         }
       }
+
+      if (initialPublish) {
+        mqttClient.publish(topic, voltChar, true);
+      }
     }
 
-    if (initialPublish == false) {
-      mqttClient.publish(topic, voltChar, true);
-    }
-
-    nextVoltageLoop = millis() + 30000;
+    nextVoltageLoop = millis() + 60000;
   }
 
   // mqtt loop
   mqttClient.loop();
 
-  if ((WiFi.status() == WL_CONNECTED) && (initialPublish == false) && mqttClient.connected()) {
+  if ((WiFi.status() == WL_CONNECTED) && (!initialPublish) && mqttClient.connected()) {
     DEBUG_PRINT("MQTT discovery publish loop:");
 
     String clientMac = WiFi.macAddress(); // 17 chars
