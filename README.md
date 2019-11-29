@@ -3,9 +3,10 @@ This sketch is for connecting D1 Minis with WS2812 RGB LEDs attached to a MQTT.
 
 ## States
 The LEDs are used to display minimal connection state information:
-* Red: After startup, waiting for connection to MQTT server
-* Green: Connected to MQTT server
-* Orange: Lost connection to MQTT server
+* Violet: At startup
+* Orange: No WiFi connection
+* Yellow: WiFi connection but not connected to MQTT Server
+* Green: Connected to WiFi and MQTT Server
 
 ## MQTT interface
 ### Discovery

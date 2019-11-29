@@ -764,8 +764,8 @@ void setup() {
   // Set buzzer pin to output
   pinMode(BUZZ_PIN, OUTPUT);
 
-  // show system startup
-  colorWipe (pixels.Color(20, 0, 0), 0);
+  // show system startup (violett)
+  colorWipe (pixels.Color(18, 0, 32), 0);
 
   // Start the Pub/Sub client
   mqttClient.setServer(MQTT_SERVER, MQTT_SERVERPORT);
@@ -773,23 +773,32 @@ void setup() {
 
   // initial delay to let millis not be 0
   delay(1);
+
+  // initial wifi connect
+  wifiConnect();
 }
 
 void loop() {
   // Check if the wifi is connected
   if (WiFi.status() != WL_CONNECTED) {
+    // set warning color since we are not connected to wifi (orange)
+    colorWipe (pixels.Color(30, 20, 0), 0);
+
     DEBUG_PRINTLN("Calling wifiConnect() as it seems to be required");
     wifiConnect();
     DEBUG_PRINTLN("My MAC: " + String(WiFi.macAddress()));
   }
 
-  if ((WiFi.status() != WL_CONNECTED) && (!mqttClient.connected())) {
+  if ((WiFi.status() == WL_CONNECTED) && (!mqttClient.connected())) {
+    // set warning color since we are not connected to mqtt (yellow)
+    colorWipe (pixels.Color(25, 25, 0), 0);
+
     DEBUG_PRINTLN("MQTT is not connected, let's try to reconnect");
     if (! mqttReconnect()) {
       // This should not happen, but seems to...
       DEBUG_PRINTLN("MQTT was unable to connect! Exiting the upload loop");
       // set warning color since we can not connect to mqtt
-      colorWipe (pixels.Color(15, 5, 0), 0);
+      colorWipe (pixels.Color(50, 0, 0), 0);
       // force reconnect to mqtt
       initialPublish = false;
     } else {
@@ -840,7 +849,7 @@ void loop() {
   // mqtt loop
   mqttClient.loop();
 
-  if (initialPublish == false) {
+  if ((WiFi.status() == WL_CONNECTED) && (initialPublish == false) && mqttClient.connected()) {
     DEBUG_PRINT("MQTT discovery publish loop:");
 
     String clientMac = WiFi.macAddress(); // 17 chars
