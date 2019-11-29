@@ -168,7 +168,7 @@ bool mqttReconnect() {
 bool wifiConnect() {
   wifiConnectionRetries += 1;
   int retryCounter = CONNECT_TIMEOUT * 1000;
-  // WiFi.forceSleepWake();
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   WiFi.mode(WIFI_STA); //  Force the ESP into client-only mode
   delay(1);
@@ -190,8 +190,9 @@ bool wifiConnect() {
       DEBUG_PRINT(".");
     }
   }
+  DEBUG_PRINT(" done, got IP: ");
+  DEBUG_PRINTLN(WiFi.localIP().toString());
   wifiConnectionRetries = 0;
-  DEBUG_PRINTLN(" done");
   return true;
 }
 
