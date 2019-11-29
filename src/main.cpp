@@ -121,6 +121,9 @@ void beep(int freq, int duration) {
 void runDefault();
 
 bool mqttReconnect() {
+  // For a clean start, disconnect first
+  mqttClient.disconnect();
+
   // Create a client ID based on the MAC address
   String clientId = String("D1WS2812") + "-";
   clientId += String(WiFi.macAddress());
@@ -792,7 +795,7 @@ void loop() {
     DEBUG_PRINTLN("My MAC: " + String(WiFi.macAddress()));
   }
 
-  if ((WiFi.status() == WL_CONNECTED) && (!mqttClient.connected())) {
+  if ((WiFi.status() == WL_CONNECTED) && (!mqttClient.loop())) {
     // set warning color since we are not connected to mqtt (yellow)
     colorWipe (pixels.Color(25, 25, 0), 0);
 
@@ -852,10 +855,7 @@ void loop() {
     nextVoltageLoop = millis() + 60000;
   }
 
-  // mqtt loop
-  mqttClient.loop();
-
-  if ((WiFi.status() == WL_CONNECTED) && (!initialPublish) && mqttClient.connected()) {
+  if ((WiFi.status() == WL_CONNECTED) && (!initialPublish) && mqttClient.loop()) {
     DEBUG_PRINT("MQTT discovery publish loop:");
 
     String clientMac = WiFi.macAddress(); // 17 chars
