@@ -886,5 +886,5 @@ void loop() {
   beepCheck();
 
   // calling loop at the end as proposed
-  mqttClient.connected();
+  mqttClient.loop();
 }
