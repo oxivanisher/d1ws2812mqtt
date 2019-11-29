@@ -4,9 +4,10 @@ This sketch is for connecting D1 Minis with WS2812 RGB LEDs attached to a MQTT.
 ## States
 The LEDs are used to display minimal connection state information:
 * Violet: At startup
-* Orange: No WiFi connection
+* Red: No WiFi connection
 * Yellow: WiFi connection but not connected to MQTT Server
-* Green: Connected to WiFi and MQTT Server
+* Light blue: Unable to connect to MQTT Server
+* Green flash: Connected to WiFi and MQTT Server, everything is OK
 
 ## MQTT interface
 ### Discovery
@@ -44,37 +45,37 @@ Please be aware, that you have to end the attributes with a semicolon!
 
 ## Detailed description
 ### 0: off
-*Attributes:* None  
+*Attributes:* None
 All LEDs are switched off.
 
 ### 1: Sunrise
-*Attributes:* None  
+*Attributes:* None
 Sunrise simulation overt time.
 
 ### 2: Fixed
-*Attributes:*  red;green;blue;wait ms;  
+*Attributes:*  red;green;blue;wait ms;
 Fixed color for all LEDS.
 
 ### 3: Fade
 **Not yet implemented**
-*Attributes:* None  
+*Attributes:* None
 Fade from to a color.
 
 ### 4: Rainbow
 **Not yet implemented**
-*Attributes:* None  
+*Attributes:* None
 Animated rainbow colors.
 
 ### 5: Fire
-*Attributes:*: None  
+*Attributes:*: None
 Animated fire effect.
 
 ### 6: Flash
-*Attributes:* red;green;blue;  
+*Attributes:* red;green;blue;
 Flash a color.
 
 ### 7: Run
-*Attributes:* num of leds;loop delay;direction;active red;active green;active blue;passive red;passive green;passive blue;  
+*Attributes:* num of leds;loop delay;direction;active red;active green;active blue;passive red;passive green;passive blue;
 Animate running light. It is always one led with the active color in <num of leds> in the passive color.
 
 ### 8: Fixed LED

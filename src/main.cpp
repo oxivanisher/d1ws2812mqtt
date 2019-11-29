@@ -29,6 +29,9 @@ String s = String();
 // Variable to store voltage
 float lastVolt = 0.0;
 
+// Variable to store Wifi retries (required to catch some problems when i.e. the wifi ap mac address changes)
+uint8_t wifiConnectionRetries = 0;
+
 // Logic switches
 bool readyToUpload = false;
 long lastMsg = 0;
@@ -163,21 +166,31 @@ bool mqttReconnect() {
 }
 
 bool wifiConnect() {
-  int retryCounter = CONNECT_TIMEOUT * 100;
+  wifiConnectionRetries += 1;
+  int retryCounter = CONNECT_TIMEOUT * 1000;
   // WiFi.forceSleepWake();
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   WiFi.mode(WIFI_STA); //  Force the ESP into client-only mode
   delay(1);
   DEBUG_PRINT("Reconnecting to Wifi ");
+  DEBUG_PRINT(wifiConnectionRetries);
+  DEBUG_PRINT("/20 ");
   while (WiFi.status() != WL_CONNECTED) {
     retryCounter--;
     if (retryCounter <= 0) {
       DEBUG_PRINTLN(" timeout reached!");
+      if (wifiConnectionRetries > 19) {
+        DEBUG_PRINTLN("Wifi connection not sucessful after 20 tries. Resetting ESP8266!");
+        ESP.restart();
+      }
       return false;
     }
-    delay(10);
-    DEBUG_PRINT(".");
+    delay(1);
+    if (retryCounter % 500 == 0) {
+      DEBUG_PRINT(".");
+    }
   }
+  wifiConnectionRetries = 0;
   DEBUG_PRINTLN(" done");
   return true;
 }
@@ -784,8 +797,8 @@ void setup() {
 void loop() {
   // Check if the wifi is connected
   if (WiFi.status() != WL_CONNECTED) {
-    // set warning color since we are not connected to wifi (orange)
-    colorWipe (pixels.Color(30, 20, 0), 0);
+    // set warning color since we are not connected to wifi (red)
+    colorWipe (pixels.Color(50, 00, 0), 0);
 
     DEBUG_PRINTLN("Calling wifiConnect() as it seems to be required");
     wifiConnect();
@@ -801,7 +814,7 @@ void loop() {
       // This should not happen, but seems to...
       DEBUG_PRINTLN("MQTT was unable to connect! Exiting the upload loop");
       // set warning color since we can not connect to mqtt
-      colorWipe (pixels.Color(50, 0, 0), 0);
+      colorWipe (pixels.Color(5, 40, 35), 0);
       // force reconnect to mqtt
       initialPublish = false;
     } else {
@@ -823,8 +836,19 @@ void loop() {
 
       initialPublish = true;
 
-      // show system startup
-      colorWipe (pixels.Color(0, 20, 0), 0);
+      // show system startup success by flashing green
+      doSunrise    = false;
+      doFixedColor = false;
+      doFire       = false;
+      doFlash      = true;
+      doRun        = false;
+      doRgbRun     = false;
+      doRgbCycle   = false;
+
+      flashColor[0] = 0;
+      flashColor[1] = 60;
+      flashColor[2] = 0;
+
       beep(2500, 800);
 
     } else {
@@ -873,7 +897,7 @@ void loop() {
 
     nextVoltageLoop = millis() + 60000;
   }
-  
+
   // Call RGB Strip functions
   rgbCycle();
   sunrise();
