@@ -128,7 +128,7 @@ bool mqttReconnect() {
   String clientId = String("D1WS2812") + "-";
   clientId += String(WiFi.macAddress());
 
-  // Loop until we're reconnected
+  // Loop 5 times or until we're reconnected
   int counter = 0;
   while (!mqttClient.connected()) {
     counter++;
@@ -158,19 +158,19 @@ bool mqttReconnect() {
       DEBUG_PRINT("failed, rc=");
       DEBUG_PRINT(mqttClient.state());
       DEBUG_PRINTLN(" try again in 2 seconds");
-      // Wait 2 seconds before retrying
-      delay(2000);
+      // Wait 1 second before retrying
+      delay(1000);
     }
   }
   return false;
 }
 
 bool wifiConnect() {
-  int retryCounter = CONNECT_TIMEOUT * 10;
-  WiFi.forceSleepWake();
+  int retryCounter = CONNECT_TIMEOUT * 100;
+  // WiFi.forceSleepWake();
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   WiFi.mode(WIFI_STA); //  Force the ESP into client-only mode
-  delay(100);
+  delay(1);
   DEBUG_PRINT("Reconnecting to Wifi ");
   while (WiFi.status() != WL_CONNECTED) {
     retryCounter--;
@@ -178,7 +178,7 @@ bool wifiConnect() {
       DEBUG_PRINTLN(" timeout reached!");
       return false;
     }
-    delay(100);
+    delay(10);
     DEBUG_PRINT(".");
   }
   DEBUG_PRINTLN(" done");
@@ -795,7 +795,7 @@ void loop() {
     DEBUG_PRINTLN("My MAC: " + String(WiFi.macAddress()));
   }
 
-  if ((WiFi.status() == WL_CONNECTED) && (!mqttClient.loop())) {
+  if ((WiFi.status() == WL_CONNECTED) && (!mqttClient.connected())) {
     // set warning color since we are not connected to mqtt (yellow)
     colorWipe (pixels.Color(25, 25, 0), 0);
 
@@ -810,6 +810,28 @@ void loop() {
     } else {
       // readyToUpload = true;
       DEBUG_PRINTLN("MQTT successfully reconnected");
+    }
+  }
+
+  if ((WiFi.status() == WL_CONNECTED) && (!initialPublish)) {
+    DEBUG_PRINT("MQTT discovery publish loop:");
+
+    String clientMac = WiFi.macAddress(); // 17 chars
+    char topic[37] = "/d1ws2812/discovery/";
+    strcat(topic, clientMac.c_str());
+
+    if (mqttClient.publish(topic, VERSION, true)) {
+      // Publishing values successful, removing them from cache
+      DEBUG_PRINTLN(" successful");
+
+      initialPublish = true;
+
+      // show system startup
+      colorWipe (pixels.Color(0, 20, 0), 0);
+      beep(2500, 800);
+
+    } else {
+      DEBUG_PRINTLN(" FAILED!");
     }
   }
 
@@ -854,29 +876,7 @@ void loop() {
 
     nextVoltageLoop = millis() + 60000;
   }
-
-  if ((WiFi.status() == WL_CONNECTED) && (!initialPublish) && mqttClient.loop()) {
-    DEBUG_PRINT("MQTT discovery publish loop:");
-
-    String clientMac = WiFi.macAddress(); // 17 chars
-    char topic[37] = "/d1ws2812/discovery/";
-    strcat(topic, clientMac.c_str());
-
-    if (mqttClient.publish(topic, VERSION, true)) {
-      // Publishing values successful, removing them from cache
-      DEBUG_PRINTLN(" successful");
-
-      initialPublish = true;
-
-      // show system startup
-      colorWipe (pixels.Color(0, 20, 0), 0);
-      beep(2500, 800);
-
-    } else {
-      DEBUG_PRINTLN(" FAILED!");
-    }
-  }
-
+  
   // Call RGB Strip functions
   rgbCycle();
   sunrise();
@@ -887,4 +887,7 @@ void loop() {
 
   // Beep check called
   beepCheck();
+
+  // calling loop at the end as proposed
+  mqttClient.connected();
 }
