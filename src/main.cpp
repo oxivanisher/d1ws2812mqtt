@@ -28,6 +28,8 @@ String s = String();
 
 // Variable to store voltage
 float lastVolt = 0.0;
+int cells = -1;
+unsigned long nextVoltageLoop = 0;
 
 // Variable to store Wifi retries (required to catch some problems when i.e. the wifi ap mac address changes)
 uint8_t wifiConnectionRetries = 0;
@@ -104,9 +106,7 @@ bool doRgbRun = false;
 // RGB Cycle (cycle vars, non RGB)
 unsigned long nextCycleLoop = 0;
 
-unsigned long nextVoltageLoop = 0;
 float readVoltage() {
-  // float version of map()
   return ((float)analogRead(VOLT_PIN) - 0.0) * (28.0 - 0.0) / (1024.0 - 0.0);
 }
 
@@ -877,8 +877,12 @@ void loop() {
       DEBUG_PRINTLN("Voltage did not change");
     } else {
       lastVolt = volt;
-      unsigned cells = (volt / 3.2);
-      DEBUG_PRINT("Calculated cells: ");
+      if (cells == -1) {
+        cells = (volt / 3.5);
+        DEBUG_PRINT("Calculated cells: ");
+      } else {
+        DEBUG_PRINT("Cells calculated at start: ");
+      }
       DEBUG_PRINTLN(cells);
 
       if (cells > 0) {
