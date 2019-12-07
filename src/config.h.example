@@ -1,32 +1,35 @@
 #ifndef __CONFIG_H
   #define __CONFIG_H
 
-  // Development settings
+ /************************ Development settings ********************************/
   //#define DEBUG
   #define VERSION         "0.2"
   #define SERIAL_BAUD     115200
 
   /************************* WiFi Access Point *********************************/
-
   #define WIFI_SSID       ""
   #define WIFI_PASSWORD   ""
   #define CONNECT_TIMEOUT 5
 
-  /************************* Adafruit.io Setup *********************************/
-
+  /***************************** MQTT Setup ***********************************/
   #define MQTT_SERVER     ""
   #define MQTT_SERVERPORT 1883
   #define MQTT_USERNAME   ""
   #define MQTT_PASSWORD   ""
 
+  /*************************** Features Setup *********************************/
   // LED Pin (D2 on old boards, D8 for the battery board)
-  #define LED_PIN D2
+  #define LED_PIN D8
   // How many NeoPixels are attached to the Arduino?
-  #define NUMPIXELS 69
+  #define NUMPIXELS 120
 
+  // Is a buzzer attached? If not, just comment both variables.
+  #define BEEPER
   // Buzzer PIN for the battery board, default D7
   #define BUZZ_PIN D7
 
+  // Is a voltage devider addached? If not, just comment both variables.
+  #define READVOLTAGE
   // Voltage sensor PIN for the battery board, default A0
   #define VOLT_PIN A0
 

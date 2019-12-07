@@ -27,9 +27,11 @@ PubSubClient mqttClient(espClient);
 String s = String();
 
 // Variable to store voltage
+#ifdef READVOLTAGE
 float lastVolt = 0.0;
 int cells = -1;
 unsigned long nextVoltageLoop = 0;
+#endif
 
 // Variable to store Wifi retries (required to catch some problems when i.e. the wifi ap mac address changes)
 uint8_t wifiConnectionRetries = 0;
@@ -106,20 +108,11 @@ bool doRgbRun = false;
 // RGB Cycle (cycle vars, non RGB)
 unsigned long nextCycleLoop = 0;
 
+#ifdef READVOLTAGE
 float readVoltage() {
   return ((float)analogRead(VOLT_PIN) - 0.0) * (28.0 - 0.0) / (1024.0 - 0.0);
 }
-
-unsigned long beepOff = 0;
-void beepCheck() {
-  if (millis() > beepOff) {
-    noTone(BUZZ_PIN);     // Stop sound...
-  }
-}
-void beep(int freq, int duration) {
-  beepOff = millis() + duration;
-  tone(BUZZ_PIN, freq);
-}
+#endif
 
 void runDefault();
 
@@ -779,7 +772,10 @@ void setup() {
   pixels.setBrightness(255);
 
   // Set buzzer pin to output
+  #ifdef BEEPER
   pinMode(BUZZ_PIN, OUTPUT);
+  tone(BUZZ_PIN, 2500, 1000);
+  #endif
 
   // show system startup (violett)
   colorWipe (pixels.Color(18, 0, 32), 0);
@@ -838,19 +834,7 @@ void loop() {
       initialPublish = true;
 
       // show system startup success by flashing green
-      doSunrise    = false;
-      doFixedColor = false;
-      doFire       = false;
-      doFlash      = true;
-      doRun        = false;
-      doRgbRun     = false;
-      doRgbCycle   = false;
-
-      flashColor[0] = 0;
-      flashColor[1] = 60;
-      flashColor[2] = 0;
-
-      beep(2500, 800);
+      mqttCallback((char *)"Startup", (byte *)"6;0;60;0", 8);
 
     } else {
       DEBUG_PRINTLN(" FAILED!");
@@ -858,6 +842,7 @@ void loop() {
   }
 
   // read voltage if required
+  #ifdef READVOLTAGE
   if (millis() >= nextVoltageLoop) {
     float volt = readVoltage();
 
@@ -890,9 +875,11 @@ void loop() {
         DEBUG_PRINT("Calculated cell voltage: ");
         DEBUG_PRINTLN(cellVoltage);
 
+        #ifdef BEEPER
         if (cellVoltage < 3.6) {
-          beep(2000, 5000);
+          tone(BUZZ_PIN, 2000, 5000);
         }
+        #endif
       }
 
       if (initialPublish) {
@@ -902,6 +889,7 @@ void loop() {
 
     nextVoltageLoop = millis() + 60000;
   }
+  #endif
 
   // Call RGB Strip functions
   rgbCycle();
@@ -910,9 +898,6 @@ void loop() {
   flash();
   run();
   cycle();
-
-  // Beep check called
-  beepCheck();
 
   // calling loop at the end as proposed
   mqttClient.loop();
