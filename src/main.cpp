@@ -193,12 +193,18 @@ bool wifiConnect() {
     }
     delay(1);
     if (retryCounter % 500 == 0) {
+      #ifdef BEEPER
+      buzzerCheck();
+      #endif
       DEBUG_PRINT(".");
     }
   }
   DEBUG_PRINT(" done, got IP: ");
   DEBUG_PRINTLN(WiFi.localIP().toString());
   wifiConnectionRetries = 0;
+  #ifdef BEEPER
+  buzz(200);
+  #endif
   return true;
 }
 
