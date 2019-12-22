@@ -138,6 +138,9 @@ bool mqttReconnect() {
   int counter = 0;
   while (!mqttClient.connected()) {
     counter++;
+    #ifdef BEEPER
+    buzzerCheck();
+    #endif
     if (counter > 5) {
       DEBUG_PRINTLN("Exiting MQTT reconnect loop");
       return false;
@@ -159,6 +162,9 @@ bool mqttReconnect() {
       strcat(topic, clientMac.c_str());
       mqttClient.subscribe(topic, 1);
 
+      #ifdef BEEPER
+      buzz(100);
+      #endif
       return true;
     } else {
       DEBUG_PRINT("failed, rc=");
@@ -203,7 +209,7 @@ bool wifiConnect() {
   DEBUG_PRINTLN(WiFi.localIP().toString());
   wifiConnectionRetries = 0;
   #ifdef BEEPER
-  buzz(200);
+  buzz(100);
   #endif
   return true;
 }
@@ -806,7 +812,7 @@ void setup() {
   // Set buzzer pin to output
   #ifdef BEEPER
   pinMode(BUZZ_PIN, OUTPUT);
-  buzz(200);
+  buzz(100);
   #endif
 }
 
