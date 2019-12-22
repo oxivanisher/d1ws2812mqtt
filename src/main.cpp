@@ -114,6 +114,19 @@ float readVoltage() {
 }
 #endif
 
+#ifdef BEEPER
+uint16_t buzzUntil = 0;
+void buzzerCheck() {
+  if (millis() > buzzUntil) {
+    digitalWrite(BUZZ_PIN, LOW);
+  }
+}
+void buzz(uint16_t duration) {
+  buzzUntil = millis() + duration;
+  digitalWrite(BUZZ_PIN, HIGH);
+}
+#endif
+
 void runDefault();
 
 bool mqttReconnect() {
@@ -771,12 +784,6 @@ void setup() {
   pixels.begin();
   pixels.setBrightness(255);
 
-  // Set buzzer pin to output
-  #ifdef BEEPER
-  pinMode(BUZZ_PIN, OUTPUT);
-  tone(BUZZ_PIN, 2500, 1000);
-  #endif
-
   // show system startup (violett)
   colorWipe (pixels.Color(18, 0, 32), 0);
 
@@ -789,9 +796,19 @@ void setup() {
 
   // initial wifi connect
   wifiConnect();
+
+  // Set buzzer pin to output
+  #ifdef BEEPER
+  pinMode(BUZZ_PIN, OUTPUT);
+  buzz(200);
+  #endif
 }
 
 void loop() {
+  #ifdef BEEPER
+  buzzerCheck();
+  #endif
+
   // Check if the wifi is connected
   if (WiFi.status() != WL_CONNECTED) {
     // set warning color since we are not connected to wifi (red)
@@ -877,7 +894,7 @@ void loop() {
 
         #ifdef BEEPER
         if (cellVoltage < 3.6) {
-          tone(BUZZ_PIN, 2000, 5000);
+          buzz(5000);
         }
         #endif
       }
