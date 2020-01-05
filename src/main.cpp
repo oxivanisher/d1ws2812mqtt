@@ -149,8 +149,14 @@ bool mqttReconnect() {
     DEBUG_PRINT("Attempting MQTT connection...");
 
     // Attempt to connect
-    if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
+    String clientMac = WiFi.macAddress();
+    char lastWillTopic[36] = "/d1ws2812/lastwill/";
+    strcat(lastWillTopic, clientMac.c_str());
+    if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD, lastWillTopic, 1, 1, clientMac.c_str())) {
       DEBUG_PRINTLN("connected");
+
+      // clearing last will message
+      mqttClient.publish(lastWillTopic, "", true);
 
       // subscribe to "all" topic
       mqttClient.subscribe("/d1ws2812/all", 1);
@@ -158,7 +164,6 @@ bool mqttReconnect() {
       // subscript to the mac address (private) topic
       char topic[27];
       strcat(topic, "/d1ws2812/");
-      String clientMac = WiFi.macAddress();
       strcat(topic, clientMac.c_str());
       mqttClient.subscribe(topic, 1);
 

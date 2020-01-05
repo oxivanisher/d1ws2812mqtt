@@ -13,6 +13,9 @@ The LEDs are used to display minimal connection state information:
 ### Discovery
 It publishes its MAC address regularly to `/d1ws2812/discovery/MAC` with the
 current version as value.
+### Last will
+It sets its last will to `/d1ws2812/lastwill/MAC` with the MAC as message. This
+message will be retained and cleared on start.
 
 ### Control
 It subscribes to two MQTT topics:
