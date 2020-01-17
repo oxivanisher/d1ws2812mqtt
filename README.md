@@ -42,6 +42,7 @@ Please be aware, that you have to end the attributes with a semicolon!
 |  a | RGB Cycle         | 0.2     |
 |  b | RGB run reset     | 0.2     |
 |  c | RGB run           | 0.2     |
+|  d | Twinkle           | 0.3     |
 |  Y | run default       | 0.1     |
 |  Z | Save default      | 0.1     |
 
@@ -101,6 +102,9 @@ Cycles trough all colors and starts always at the same color for the run effect.
 *Attributes:* num of leds;run loop dely;direction;max brightness;rgb cycle delay
 Cycles trough all colors and continues at the last color for the run effect. The secondary "color" is always switched off LEDs (0;0;0).
 
+### d: Twinkle
+*Attributes:* background red;background green;background blue;twinkle red;twinkle green;twinkle blue;max num of twinkles;twinkle min duration;twinkle max duration
+Sets all LEDs to the background color, then "twinkles" (fade to twinkle color and back) random leds for a duration between twinkle min and max duration. Please be aware, that it chooses LEDs from 0 to NUMPIXELS. So if you connect only 30 LEDs, but NUMPIXELS is set to 120 (default), you have to consider the number of twinkles not for 30 but for 120 LEDs.
 
 ### Y: Run default
 *Attributes:* None
