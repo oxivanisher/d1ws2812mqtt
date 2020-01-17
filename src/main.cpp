@@ -112,9 +112,18 @@ unsigned long nextCycleLoop = 0;
 bool doTwinkle = false;
 uint8_t twinkleBgColor[] = {0, 0, 0};
 uint8_t twinkleColor[] = {0, 0, 0};
-uint8_t twinkleMaxLeds = 0;
+uint8_t twinkleTmpColor[] = {0, 0, 0};
+uint16_t twinkleMinDelay = 0;
+uint16_t twinkleMaxDelay = 0;
 uint16_t twinkleMinDuration = 0;
 uint16_t twinkleMaxDuration = 0;
+unsigned long nextTwinkleStart = 0;
+unsigned long twinkleTmpStartTime = 0;
+unsigned long twinkleTmpEndTime = 0;
+int16_t twinkleLedIndex[MAX_TWINKLES];
+uint16_t twinkleLedDuraion[MAX_TWINKLES];
+unsigned long twinkleLedStart[MAX_TWINKLES];
+bool twinkleChange = false;
 
 #ifdef READVOLTAGE
 float readVoltage() {
@@ -503,19 +512,66 @@ void cycle() {
 
 void twinkle() {
   /*
-    twinkleBgColor[0] = getValue(s,';',1).toInt();
-    twinkleBgColor[1] = getValue(s,';',2).toInt();
-    twinkleBgColor[2] = getValue(s,';',3).toInt();
-
-    twinkleColor[0] = getValue(s,';',4).toInt();
-    twinkleColor[1] = getValue(s,';',5).toInt();
-    twinkleColor[2] = getValue(s,';',6).toInt();
-
-    twinkleMaxLeds = getValue(s,';',7).toInt();
-    twinkleMinDuration = getValue(s,';',8).toInt();
-    twinkleMaxDuration = getValue(s,';',9).toInt();
+  uint8_t twinkleBgColor[] = {0, 0, 0};
+  uint8_t twinkleColor[] = {0, 0, 0};
+  uint16_t twinkleMinDelay = 0;
+  uint16_t twinkleMaxDelay = 0;
+  uint16_t twinkleMinDuration = 0;
+  uint16_t twinkleMaxDuration = 0;
+  unsigned long nextTwinkleStart = 0;
+  uint8_t twinkleLedIndex[MAX_TWINKLES]; -1 if no led active
+  uint16_t twinkleLedDuraion[MAX_TWINKLES];
+  unsigned long twinkleLedStart[MAX_TWINKLES];
   */
 
+  if (nextTwinkleStart < millis()) {
+    for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
+      if (twinkleLedIndex[i] == -1) {
+        twinkleLedIndex[i] = random(0, NUMPIXELS);
+        twinkleLedDuraion[i] = 0;
+        twinkleLedStart[i] = millis();
+        nextTwinkleStart = millis() + random(twinkleMinDelay, twinkleMaxDelay);
+        continue;
+      }
+    }
+  }
+
+  twinkleChange = false;
+
+  for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
+    if (twinkleLedIndex[i] == -1) {
+      if (millis() > twinkleLedStart[i] + twinkleLedDuraion[i]) {
+        // twinkle finished, reset index
+        twinkleLedIndex[i] = -1;
+        pixels.setPixelColor(i, pixels.Color(twinkleBgColor[0],twinkleBgColor[1],twinkleBgColor[2]));
+        twinkleChange = true;
+      } else {
+        // loop over all active twinkles and adjust colors
+
+        if (millis() < twinkleLedStart[i] + (twinkleLedDuraion[i] / 2)) {
+          // first fade
+          twinkleTmpStartTime = twinkleLedStart[i];
+          twinkleTmpEndTime = twinkleLedStart[i] + (twinkleLedDuraion[i] / 2);
+          twinkleTmpColor[0] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[0], twinkleColor[0]);
+          twinkleTmpColor[1] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[1], twinkleColor[1]);
+          twinkleTmpColor[2] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[2], twinkleColor[2]);
+        } else {
+          // second fade
+          twinkleTmpStartTime = twinkleLedStart[i] + (twinkleLedDuraion[i] / 2);
+          twinkleTmpEndTime = twinkleLedStart[i] + twinkleLedDuraion[i];
+          twinkleTmpColor[0] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[0], twinkleBgColor[0]);
+          twinkleTmpColor[1] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[1], twinkleBgColor[1]);
+          twinkleTmpColor[2] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[2], twinkleBgColor[2]);
+        }
+        pixels.setPixelColor(i, pixels.Color(twinkleTmpColor[0],twinkleTmpColor[1],twinkleTmpColor[2]));
+        twinkleChange = true;
+      }
+    }
+  }
+
+  if (twinkleChange) {
+    pixels.show();
+  }
 }
 
 
@@ -800,7 +856,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     lastRgbLoop = millis();
 
   } else if ((char)payload[0] == 'd') {
-    //background red;background green;background blue;twinkle red;twinkle green;twinkle blue;max num of twinkles;twinkle min duration;twinkle max duration
+    //background red;background green;background blue;twinkle red;twinkle green;twinkle blue;twinkle min delay;twinkle max delay;twinkle min duration;twinkle max duration
     DEBUG_PRINT("Enabling Twinkle");
     doSunrise    = false;
     doFixedColor = false;
@@ -821,11 +877,15 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     twinkleColor[1] = getValue(s,';',5).toInt();
     twinkleColor[2] = getValue(s,';',6).toInt();
 
-    twinkleMaxLeds = getValue(s,';',7).toInt();
-    twinkleMinDuration = getValue(s,';',8).toInt();
-    twinkleMaxDuration = getValue(s,';',9).toInt();
+    twinkleMinDelay = getValue(s,';',7).toInt();
+    twinkleMaxDelay = getValue(s,';',8).toInt();
+    twinkleMinDuration = getValue(s,';',9).toInt();
+    twinkleMaxDuration = getValue(s,';',10).toInt();
 
-    colorWipe (pixels.Color(twinkleBgColor[0], twinkleBgColor[1], twinkleBgColor[2], 0));
+    colorWipe (pixels.Color(twinkleBgColor[0], twinkleBgColor[1], twinkleBgColor[2]), 0);
+
+    // reset all twinkle states
+    for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) twinkleLedIndex[i] = -1;
 
   } else if ((char)payload[0] == 'Y') {
     DEBUG_PRINTLN("Running default effect");

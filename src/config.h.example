@@ -33,4 +33,8 @@
   // Voltage sensor PIN for the battery board, default A0
   #define VOLT_PIN A0
 
+  /*************************** Effect Settings *********************************/
+  // Max amount of twinkles at any given time
+  #define MAX_TWINKLES 30
+
 #endif

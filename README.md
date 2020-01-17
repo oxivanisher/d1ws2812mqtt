@@ -103,8 +103,8 @@ Cycles trough all colors and starts always at the same color for the run effect.
 Cycles trough all colors and continues at the last color for the run effect. The secondary "color" is always switched off LEDs (0;0;0).
 
 ### d: Twinkle
-*Attributes:* background red;background green;background blue;twinkle red;twinkle green;twinkle blue;max num of twinkles;twinkle min duration;twinkle max duration
-Sets all LEDs to the background color, then "twinkles" (fade to twinkle color and back) random leds for a duration between twinkle min and max duration. Please be aware, that it chooses LEDs from 0 to NUMPIXELS. So if you connect only 30 LEDs, but NUMPIXELS is set to 120 (default), you have to consider the number of twinkles not for 30 but for 120 LEDs.
+*Attributes:* background red;background green;background blue;twinkle red;twinkle green;twinkle blue;twinkle min delay;twinkle max delay;twinkle min duration;twinkle max duration
+Sets all LEDs to the background color, then "twinkles" (fade to twinkle color and back) random leds at random between twinkle min and max delay for a duration between twinkle min and max duration. Please be aware, that it chooses LEDs from 0 to `NUMPIXELS`. So if you connect only 30 LEDs, but NUMPIXELS is set to 120 (default), you have to consider the number of twinkles not for 30 but for 120 LEDs. There is a configurable amount of max twinkles at any given point in time in config.h under the name `MAX_TWINKLES`.
 
 ### Y: Run default
 *Attributes:* None
