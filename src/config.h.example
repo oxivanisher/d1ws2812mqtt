@@ -3,7 +3,7 @@
 
  /************************ Development settings ********************************/
   //#define DEBUG
-  #define VERSION         "0.2"
+  #define VERSION         "0.3"
   #define SERIAL_BAUD     115200
 
   /************************* WiFi Access Point *********************************/
@@ -32,5 +32,9 @@
   #define READVOLTAGE
   // Voltage sensor PIN for the battery board, default A0
   #define VOLT_PIN A0
+
+  /*************************** Effect Settings *********************************/
+  // Max amount of twinkles at any given time
+  #define MAX_TWINKLES 30
 
 #endif
