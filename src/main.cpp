@@ -511,18 +511,7 @@ void cycle() {
 }
 
 void twinkle() {
-  /*
-  uint8_t twinkleBgColor[] = {0, 0, 0};
-  uint8_t twinkleColor[] = {0, 0, 0};
-  uint16_t twinkleMinDelay = 0;
-  uint16_t twinkleMaxDelay = 0;
-  uint16_t twinkleMinDuration = 0;
-  uint16_t twinkleMaxDuration = 0;
-  unsigned long nextTwinkleStart = 0;
-  uint8_t twinkleLedIndex[MAX_TWINKLES]; -1 if no led active
-  uint16_t twinkleLedDuraion[MAX_TWINKLES];
-  unsigned long twinkleLedStart[MAX_TWINKLES];
-  */
+  if (! doTwinkle) return;
 
   if (nextTwinkleStart < millis()) {
     for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
