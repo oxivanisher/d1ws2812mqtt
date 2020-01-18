@@ -519,10 +519,10 @@ void twinkle() {
     for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
       if (twinkleLedIndex[i] == -1) {
         twinkleLedIndex[i] = random(0, NUMPIXELS);
-        twinkleLedDuraion[i] = 0;
+        twinkleLedDuraion[i] = random(twinkleMinDuration, twinkleMaxDuration);
         twinkleLedStart[i] = millis();
         nextTwinkleStart = millis() + random(twinkleMinDelay, twinkleMaxDelay);
-        continue;
+        break;
       }
     }
   }
@@ -530,8 +530,8 @@ void twinkle() {
   twinkleChange = false;
 
   for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
-    if (twinkleLedIndex[i] == -1) {
-      if (millis() > twinkleLedStart[i] + twinkleLedDuraion[i]) {
+    if (twinkleLedIndex[i] != -1) {
+      if (millis() > (twinkleLedStart[i] + twinkleLedDuraion[i])) {
         // twinkle finished, reset index
         twinkleLedIndex[i] = -1;
         pixels.setPixelColor(i, pixels.Color(twinkleBgColor[0],twinkleBgColor[1],twinkleBgColor[2]));
@@ -539,7 +539,7 @@ void twinkle() {
       } else {
         // loop over all active twinkles and adjust colors
 
-        if (millis() < twinkleLedStart[i] + (twinkleLedDuraion[i] / 2)) {
+        if (millis() < (twinkleLedStart[i] + (twinkleLedDuraion[i] / 2))) {
           // first fade
           twinkleTmpStartTime = twinkleLedStart[i];
           twinkleTmpEndTime = twinkleLedStart[i] + (twinkleLedDuraion[i] / 2);
@@ -554,13 +554,13 @@ void twinkle() {
           twinkleTmpColor[1] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[1], twinkleBgColor[1]);
           twinkleTmpColor[2] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[2], twinkleBgColor[2]);
         }
-        pixels.setPixelColor(i, pixels.Color(twinkleTmpColor[0],twinkleTmpColor[1],twinkleTmpColor[2]));
+        pixels.setPixelColor(twinkleLedIndex[i], pixels.Color(twinkleTmpColor[0],twinkleTmpColor[1],twinkleTmpColor[2]));
         twinkleChange = true;
       }
     }
   }
 
-  if (twinkleChange) {
+  if (twinkleChange == true) {
     pixels.show();
   }
 }
@@ -872,6 +872,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     twinkleMaxDelay = getValue(s,';',8).toInt();
     twinkleMinDuration = getValue(s,';',9).toInt();
     twinkleMaxDuration = getValue(s,';',10).toInt();
+
+    nextTwinkleStart = 0;
 
     colorWipe (pixels.Color(twinkleBgColor[0], twinkleBgColor[1], twinkleBgColor[2]), 0);
 
