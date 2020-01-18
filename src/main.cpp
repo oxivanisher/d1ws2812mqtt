@@ -206,6 +206,8 @@ bool wifiConnect() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   WiFi.mode(WIFI_STA); //  Force the ESP into client-only mode
   delay(1);
+  DEBUG_PRINT("My Mac: ");
+  DEBUG_PRINTLN(WiFi.macAddress());
   DEBUG_PRINT("Reconnecting to Wifi ");
   DEBUG_PRINT(wifiConnectionRetries);
   DEBUG_PRINT("/20 ");
