@@ -848,7 +848,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   } else if ((char)payload[0] == 'd') {
     //background red;background green;background blue;twinkle red;twinkle green;twinkle blue;twinkle min delay;twinkle max delay;twinkle min duration;twinkle max duration
-    DEBUG_PRINT("Enabling Twinkle");
+    DEBUG_PRINTLN("Enabling Twinkle");
     doSunrise    = false;
     doFixedColor = false;
     doFire       = false;
