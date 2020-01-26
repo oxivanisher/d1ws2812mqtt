@@ -123,7 +123,6 @@ unsigned long twinkleTmpEndTime = 0;
 int16_t twinkleLedIndex[MAX_TWINKLES];
 uint16_t twinkleLedDuraion[MAX_TWINKLES];
 unsigned long twinkleLedStart[MAX_TWINKLES];
-bool twinkleChange = false;
 
 #ifdef READVOLTAGE
 float readVoltage() {
@@ -199,7 +198,27 @@ bool mqttReconnect() {
   return false;
 }
 
+// fill the neopixel dots one after the other with a color
+void colorWipe(uint32_t c, uint8_t wait) {
+  // since it is very slow to call pixels.show on 120 leds, only do that
+  // if it is required.
+  if (wait) {
+    for (uint16_t i = 0; i < pixels.numPixels(); i++) {
+      delay(wait);
+      pixels.setPixelColor(i, c);
+      pixels.show();
+    }
+  } else {
+    for (uint16_t i = 0; i < pixels.numPixels(); i++) {
+      pixels.setPixelColor(i, c);
+    }
+    pixels.show();
+  }
+}
+
+// connect to wifi
 bool wifiConnect() {
+  bool blinkState = true;
   wifiConnectionRetries += 1;
   int retryCounter = CONNECT_TIMEOUT * 1000;
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
@@ -216,6 +235,9 @@ bool wifiConnect() {
     if (retryCounter <= 0) {
       DEBUG_PRINTLN(" timeout reached!");
       if (wifiConnectionRetries > 19) {
+        // set warning color since we are rebooting (white)
+        colorWipe (pixels.Color(30, 30, 30), 0);
+
         DEBUG_PRINTLN("Wifi connection not sucessful after 20 tries. Resetting ESP8266!");
         ESP.restart();
       }
@@ -227,6 +249,17 @@ bool wifiConnect() {
       buzzerCheck();
       #endif
       DEBUG_PRINT(".");
+      if (blinkState) {
+        blinkState = false;
+        // set warning color since we are not connected to mqtt (red high)
+        colorWipe (pixels.Color(50, 0, 0), 0);
+
+      } else {
+        blinkState = true;
+        // set warning color since we are not connected to mqtt (red low)
+        colorWipe (pixels.Color(20, 0, 0), 0);
+
+      }
     }
   }
   DEBUG_PRINT(" done, got IP: ");
@@ -253,24 +286,6 @@ String getValue(String data, char separator, int index) {
         }
     }
     return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
-}
-
-// fill the neopixel dots one after the other with a color
-void colorWipe(uint32_t c, uint8_t wait) {
-  // since it is very slow to call pixels.show on 120 leds, only do that
-  // if it is required.
-  if (wait) {
-    for (uint16_t i = 0; i < pixels.numPixels(); i++) {
-      delay(wait);
-      pixels.setPixelColor(i, c);
-      pixels.show();
-    }
-  } else {
-    for (uint16_t i = 0; i < pixels.numPixels(); i++) {
-      pixels.setPixelColor(i, c);
-    }
-    pixels.show();
-  }
 }
 
 // neopixel color fade loop
@@ -515,7 +530,7 @@ void cycle() {
 void twinkle() {
   if (! doTwinkle) return;
 
-  if (nextTwinkleStart < millis()) {
+  if (nextTwinkleStart <= millis()) {
     for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
       if (twinkleLedIndex[i] == -1) {
         twinkleLedIndex[i] = random(0, NUMPIXELS);
@@ -527,15 +542,13 @@ void twinkle() {
     }
   }
 
-  twinkleChange = false;
-
   for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
     if (twinkleLedIndex[i] != -1) {
-      if (millis() > (twinkleLedStart[i] + twinkleLedDuraion[i])) {
+      if (millis() >= (twinkleLedStart[i] + twinkleLedDuraion[i])) {
         // twinkle finished, reset index
         twinkleLedIndex[i] = -1;
+        // set default bg colors for finished leds
         pixels.setPixelColor(i, pixels.Color(twinkleBgColor[0],twinkleBgColor[1],twinkleBgColor[2]));
-        twinkleChange = true;
       } else {
         // loop over all active twinkles and adjust colors
 
@@ -555,14 +568,11 @@ void twinkle() {
           twinkleTmpColor[2] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[2], twinkleBgColor[2]);
         }
         pixels.setPixelColor(twinkleLedIndex[i], pixels.Color(twinkleTmpColor[0],twinkleTmpColor[1],twinkleTmpColor[2]));
-        twinkleChange = true;
       }
     }
   }
 
-  if (twinkleChange == true) {
-    pixels.show();
-  }
+  pixels.show();
 }
 
 
@@ -959,6 +969,7 @@ void loop() {
   if ((WiFi.status() == WL_CONNECTED) && (!mqttClient.connected())) {
     // set warning color since we are not connected to mqtt (yellow)
     colorWipe (pixels.Color(25, 25, 0), 0);
+    delay(500);
 
     DEBUG_PRINTLN("MQTT is not connected, let's try to reconnect");
     if (! mqttReconnect()) {
@@ -966,6 +977,7 @@ void loop() {
       DEBUG_PRINTLN("MQTT was unable to connect! Exiting the upload loop");
       // set warning color since we can not connect to mqtt
       colorWipe (pixels.Color(5, 40, 35), 0);
+      delay(500);
       // force reconnect to mqtt
       initialPublish = false;
     } else {
@@ -1045,6 +1057,9 @@ void loop() {
   }
   #endif
 
+  // feeding the watchdog to be sure
+  ESP.wdtFeed();
+
   // Call RGB Strip functions
   rgbCycle();
   sunrise();
@@ -1053,6 +1068,9 @@ void loop() {
   run();
   cycle();
   twinkle();
+
+  // feeding the watchdog to be sure
+  ESP.wdtFeed();
 
   // calling loop at the end as proposed
   mqttClient.loop();

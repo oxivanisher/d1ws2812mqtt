@@ -8,6 +8,7 @@ The LEDs are used to display minimal connection state information:
 * Yellow: WiFi connection but not connected to MQTT Server
 * Light blue: Unable to connect to MQTT Server
 * Green flash: Connected to WiFi and MQTT Server, everything is OK
+* White: Will be set when the ESP gets resetted due to no network connection
 
 ## MQTT interface
 ### Discovery
