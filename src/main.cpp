@@ -123,6 +123,7 @@ unsigned long twinkleTmpEndTime = 0;
 int16_t twinkleLedIndex[MAX_TWINKLES];
 uint16_t twinkleLedDuraion[MAX_TWINKLES];
 unsigned long twinkleLedStart[MAX_TWINKLES];
+unsigned long twinkleLastLoop = 0;
 
 #ifdef READVOLTAGE
 float readVoltage() {
@@ -529,14 +530,28 @@ void cycle() {
 
 void twinkle() {
   if (! doTwinkle) return;
+  unsigned long now = millis();
+  if (twinkleLastLoop >= now) return;
+  twinkleLastLoop = now;
+  bool changesMade = false;
 
-  if (nextTwinkleStart <= millis()) {
+  if (nextTwinkleStart <= now) {
     for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
       if (twinkleLedIndex[i] == -1) {
+        DEBUG_PRINT(i);
+        DEBUG_PRINT(" twinkle started ");
+
         twinkleLedIndex[i] = random(0, NUMPIXELS);
+        DEBUG_PRINT("for led ");
+        DEBUG_PRINT(twinkleLedIndex[i]);
+
         twinkleLedDuraion[i] = random(twinkleMinDuration, twinkleMaxDuration);
-        twinkleLedStart[i] = millis();
-        nextTwinkleStart = millis() + random(twinkleMinDelay, twinkleMaxDelay);
+        DEBUG_PRINT(" with duration ");
+        DEBUG_PRINTLN(twinkleLedDuraion[i]);
+
+        twinkleLedStart[i] = now;
+
+        nextTwinkleStart = now + random(twinkleMinDelay, twinkleMaxDelay);
         break;
       }
     }
@@ -544,35 +559,49 @@ void twinkle() {
 
   for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
     if (twinkleLedIndex[i] != -1) {
-      if (millis() >= (twinkleLedStart[i] + twinkleLedDuraion[i])) {
+      if (now >= (twinkleLedStart[i] + twinkleLedDuraion[i])) {
+        DEBUG_PRINT(i);
+        DEBUG_PRINTLN(" twinkle finished, reset index");
         // twinkle finished, reset index
         twinkleLedIndex[i] = -1;
         // set default bg colors for finished leds
+        DEBUG_PRINTLN("set off color");
         pixels.setPixelColor(i, pixels.Color(twinkleBgColor[0],twinkleBgColor[1],twinkleBgColor[2]));
+        changesMade = true;
       } else {
         // loop over all active twinkles and adjust colors
 
         if (millis() < (twinkleLedStart[i] + (twinkleLedDuraion[i] / 2))) {
+          DEBUG_PRINTLN("first fade ");
+          DEBUG_PRINTLN(i);
           // first fade
           twinkleTmpStartTime = twinkleLedStart[i];
           twinkleTmpEndTime = twinkleLedStart[i] + (twinkleLedDuraion[i] / 2);
-          twinkleTmpColor[0] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[0], twinkleColor[0]);
-          twinkleTmpColor[1] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[1], twinkleColor[1]);
-          twinkleTmpColor[2] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[2], twinkleColor[2]);
+          twinkleTmpColor[0] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[0], twinkleColor[0]);
+          twinkleTmpColor[1] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[1], twinkleColor[1]);
+          twinkleTmpColor[2] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[2], twinkleColor[2]);
         } else {
+          DEBUG_PRINT("second fade ");
+          DEBUG_PRINTLN(i);
           // second fade
           twinkleTmpStartTime = twinkleLedStart[i] + (twinkleLedDuraion[i] / 2);
           twinkleTmpEndTime = twinkleLedStart[i] + twinkleLedDuraion[i];
-          twinkleTmpColor[0] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[0], twinkleBgColor[0]);
-          twinkleTmpColor[1] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[1], twinkleBgColor[1]);
-          twinkleTmpColor[2] = map(millis(), twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[2], twinkleBgColor[2]);
+          twinkleTmpColor[0] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[0], twinkleBgColor[0]);
+          twinkleTmpColor[1] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[1], twinkleBgColor[1]);
+          twinkleTmpColor[2] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[2], twinkleBgColor[2]);
         }
+        DEBUG_PRINTLN("set fade color");
         pixels.setPixelColor(twinkleLedIndex[i], pixels.Color(twinkleTmpColor[0],twinkleTmpColor[1],twinkleTmpColor[2]));
+        changesMade = true;
       }
     }
   }
 
-  pixels.show();
+  if (changesMade) {
+    DEBUG_PRINTLN("showing");
+    pixels.show();
+    delay(1); //testing without debug ...
+  }
 }
 
 
@@ -925,6 +954,9 @@ void setup() {
   // delay for the serial monitor to start
   delay(3000);
   #endif
+
+	// disable software watchdog for testing
+  // ESP.wdtDisable();
 
   // setup NeoPixel
   DEBUG_PRINTLN("Initializing LEDs");
