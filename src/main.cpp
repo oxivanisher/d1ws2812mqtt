@@ -1,6 +1,7 @@
+#include <PubSubClient.h>
+
 #include "Adafruit_NeoPixel.h"
 #include "ESP8266WiFi.h"
-#include <PubSubClient.h>
 
 // Read settingd from config.h
 #include "config.h"
@@ -14,12 +15,13 @@
 #endif
 
 // Initialize Adafruit_NeoPixel
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels =
+    Adafruit_NeoPixel(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Create an ESP8266 WiFiClient class to connect to the MQTT server.
 WiFiClient espClient;
 // or... use WiFiFlientSecure for SSL
-//WiFiClientSecure espClient;
+// WiFiClientSecure espClient;
 
 // Initialize MQTT
 PubSubClient mqttClient(espClient);
@@ -33,7 +35,8 @@ int cells = -1;
 unsigned long nextVoltageLoop = 0;
 #endif
 
-// Variable to store Wifi retries (required to catch some problems when i.e. the wifi ap mac address changes)
+// Variable to store Wifi retries (required to catch some problems when i.e. the
+// wifi ap mac address changes)
 uint8_t wifiConnectionRetries = 0;
 
 // Logic switches
@@ -125,23 +128,19 @@ unsigned long twinkleLedStart[MAX_TWINKLES];
 unsigned long twinkleLastLoop = 0;
 
 #ifdef READVOLTAGE
-float readVoltage()
-{
+float readVoltage() {
   return ((float)analogRead(VOLT_PIN) - 0.0) * (28.0 - 0.0) / (1024.0 - 0.0);
 }
 #endif
 
 #ifdef BEEPER
 uint16_t buzzUntil = 0;
-void buzzerCheck()
-{
-  if (millis() > buzzUntil)
-  {
+void buzzerCheck() {
+  if (millis() > buzzUntil) {
     digitalWrite(BUZZ_PIN, LOW);
   }
 }
-void buzz(uint16_t duration)
-{
+void buzz(uint16_t duration) {
   buzzUntil = millis() + duration;
   digitalWrite(BUZZ_PIN, HIGH);
 }
@@ -149,22 +148,19 @@ void buzz(uint16_t duration)
 
 void runDefault();
 
-bool mqttReconnect()
-{
+bool mqttReconnect() {
   // Create a client ID based on the MAC address
   String clientId = String("D1WS2812") + "-";
   clientId += String(WiFi.macAddress());
 
   // Loop 5 times or until we're reconnected
   int counter = 0;
-  while (!mqttClient.connected())
-  {
+  while (!mqttClient.connected()) {
     counter++;
 #ifdef BEEPER
     buzzerCheck();
 #endif
-    if (counter > 5)
-    {
+    if (counter > 5) {
       DEBUG_PRINTLN("Exiting MQTT reconnect loop");
       return false;
     }
@@ -175,8 +171,8 @@ bool mqttReconnect()
     String clientMac = WiFi.macAddress();
     char lastWillTopic[36] = "/d1ws2812/lastwill/";
     strcat(lastWillTopic, clientMac.c_str());
-    if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD, lastWillTopic, 1, 1, clientMac.c_str()))
-    {
+    if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD,
+                           lastWillTopic, 1, 1, clientMac.c_str())) {
       DEBUG_PRINTLN("connected");
 
       // clearing last will message
@@ -195,9 +191,7 @@ bool mqttReconnect()
       buzz(100);
 #endif
       return true;
-    }
-    else
-    {
+    } else {
       DEBUG_PRINT("failed, rc=");
       DEBUG_PRINT(mqttClient.state());
       DEBUG_PRINTLN(" try again in 2 seconds");
@@ -209,23 +203,17 @@ bool mqttReconnect()
 }
 
 // fill the neopixel dots one after the other with a color
-void colorWipe(uint32_t c, uint8_t wait)
-{
+void colorWipe(uint32_t c, uint8_t wait) {
   // since it is very slow to call pixels.show on 120 leds, only do that
   // if it is required.
-  if (wait)
-  {
-    for (uint16_t i = 0; i < pixels.numPixels(); i++)
-    {
+  if (wait) {
+    for (uint16_t i = 0; i < pixels.numPixels(); i++) {
       delay(wait);
       pixels.setPixelColor(i, c);
       pixels.show();
     }
-  }
-  else
-  {
-    for (uint16_t i = 0; i < pixels.numPixels(); i++)
-    {
+  } else {
+    for (uint16_t i = 0; i < pixels.numPixels(); i++) {
       pixels.setPixelColor(i, c);
     }
     pixels.show();
@@ -233,51 +221,44 @@ void colorWipe(uint32_t c, uint8_t wait)
 }
 
 // connect to wifi
-bool wifiConnect()
-{
+bool wifiConnect() {
   bool blinkState = true;
   wifiConnectionRetries += 1;
   int retryCounter = CONNECT_TIMEOUT * 1000;
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  WiFi.mode(WIFI_STA); //  Force the ESP into client-only mode
+  WiFi.mode(WIFI_STA);  //  Force the ESP into client-only mode
   delay(1);
   DEBUG_PRINT("My Mac: ");
   DEBUG_PRINTLN(WiFi.macAddress());
   DEBUG_PRINT("Reconnecting to Wifi ");
   DEBUG_PRINT(wifiConnectionRetries);
   DEBUG_PRINT("/20 ");
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     retryCounter--;
-    if (retryCounter <= 0)
-    {
+    if (retryCounter <= 0) {
       DEBUG_PRINTLN(" timeout reached!");
-      if (wifiConnectionRetries > 19)
-      {
+      if (wifiConnectionRetries > 19) {
         // set warning color since we are rebooting (white)
         colorWipe(pixels.Color(30, 30, 30), 0);
 
-        DEBUG_PRINTLN("Wifi connection not sucessful after 20 tries. Resetting ESP8266!");
+        DEBUG_PRINTLN(
+            "Wifi connection not sucessful after 20 tries. Resetting ESP8266!");
         ESP.restart();
       }
       return false;
     }
     delay(1);
-    if (retryCounter % 500 == 0)
-    {
+    if (retryCounter % 500 == 0) {
 #ifdef BEEPER
       buzzerCheck();
 #endif
       DEBUG_PRINT(".");
-      if (blinkState)
-      {
+      if (blinkState) {
         blinkState = false;
         // set warning color since we are not connected to mqtt (red high)
         colorWipe(pixels.Color(50, 0, 0), 0);
-      }
-      else
-      {
+      } else {
         blinkState = true;
         // set warning color since we are not connected to mqtt (red low)
         colorWipe(pixels.Color(20, 0, 0), 0);
@@ -295,16 +276,13 @@ bool wifiConnect()
 
 // helper functions
 // Thanks to https://gist.github.com/mattfelsen/9467420
-String getValue(String data, char separator, int index)
-{
+String getValue(String data, char separator, int index) {
   int found = 0;
   int strIndex[] = {0, -1};
   int maxIndex = data.length();
 
-  for (int i = 0; i <= maxIndex && found <= index; i++)
-  {
-    if (data.charAt(i) == separator || i == maxIndex)
-    {
+  for (int i = 0; i <= maxIndex && found <= index; i++) {
+    if (data.charAt(i) == separator || i == maxIndex) {
       found++;
       strIndex[0] = strIndex[1] + 1;
       strIndex[1] = (i == maxIndex) ? i + 1 : i;
@@ -314,10 +292,10 @@ String getValue(String data, char separator, int index)
 }
 
 // neopixel color fade loop
-bool fade(uint8_t fadeCurrentColor[], uint8_t fadeStartColor[], uint32_t fadeDuration, uint16_t redEnd, uint16_t greenEnd, uint16_t blueEnd)
-{
-  if (currentFadeStart < 1)
-  {
+bool fade(uint8_t fadeCurrentColor[], uint8_t fadeStartColor[],
+          uint32_t fadeDuration, uint16_t redEnd, uint16_t greenEnd,
+          uint16_t blueEnd) {
+  if (currentFadeStart < 1) {
     // new fade loop. calculating and setting required things
     fadeCount++;
     currentFadeStart = millis();
@@ -325,46 +303,49 @@ bool fade(uint8_t fadeCurrentColor[], uint8_t fadeStartColor[], uint32_t fadeDur
     fadeStartColor[0] = fadeCurrentColor[0];
     fadeStartColor[1] = fadeCurrentColor[1];
     fadeStartColor[2] = fadeCurrentColor[2];
-    DEBUG_PRINT((String) "Fade " + fadeCount + " will take " + (currentFadeEnd - currentFadeStart) + " millis ");
-    DEBUG_PRINTLN((String) "from " + fadeStartColor[0] + ", " + fadeStartColor[1] + ", " + fadeStartColor[2] + " to " + redEnd + ", " + greenEnd + ", " + blueEnd);
+    DEBUG_PRINT((String) "Fade " + fadeCount + " will take " +
+                (currentFadeEnd - currentFadeStart) + " millis ");
+    DEBUG_PRINTLN((String) "from " + fadeStartColor[0] + ", " +
+                  fadeStartColor[1] + ", " + fadeStartColor[2] + " to " +
+                  redEnd + ", " + greenEnd + ", " + blueEnd);
   }
 
   unsigned long now = millis();
-  fadeCurrentColor[0] = map(now, currentFadeStart, currentFadeEnd, fadeStartColor[0], redEnd);
-  fadeCurrentColor[1] = map(now, currentFadeStart, currentFadeEnd, fadeStartColor[1], greenEnd);
-  fadeCurrentColor[2] = map(now, currentFadeStart, currentFadeEnd, fadeStartColor[2], blueEnd);
+  fadeCurrentColor[0] =
+      map(now, currentFadeStart, currentFadeEnd, fadeStartColor[0], redEnd);
+  fadeCurrentColor[1] =
+      map(now, currentFadeStart, currentFadeEnd, fadeStartColor[1], greenEnd);
+  fadeCurrentColor[2] =
+      map(now, currentFadeStart, currentFadeEnd, fadeStartColor[2], blueEnd);
 
-  colorWipe(pixels.Color(fadeCurrentColor[0], fadeCurrentColor[1], fadeCurrentColor[2]), 0);
+  colorWipe(pixels.Color(fadeCurrentColor[0], fadeCurrentColor[1],
+                         fadeCurrentColor[2]),
+            0);
 
-  if (millis() >= currentFadeEnd)
-  {
+  if (millis() >= currentFadeEnd) {
 // current fade finished
 #ifdef DEBUG
     unsigned long endTime = millis();
     unsigned long fadeDuration = (endTime - currentFadeStart) / 1000;
-    DEBUG_PRINTLN((String) "Fade " + fadeCount + " ended after " + fadeDuration + " seconds.");
+    DEBUG_PRINTLN((String) "Fade " + fadeCount + " ended after " +
+                  fadeDuration + " seconds.");
 #endif
     currentFadeStart = 0;
     return true;
-  }
-  else
-  {
+  } else {
     // current fade not yet finished
     return false;
   }
 }
 
 // sunrise
-void sunrise()
-{
-  if (!doSunrise)
-  {
+void sunrise() {
+  if (!doSunrise) {
     // no sunrise happening!
     sunriseStartTime = 0;
     return;
   }
-  if (sunriseStartTime < 1)
-  {
+  if (sunriseStartTime < 1) {
     DEBUG_PRINTLN((String) "Sunrise starting");
     sunriseStartTime = millis();
     sunriseLoopStep = 0;
@@ -376,23 +357,19 @@ void sunrise()
     currentColor[2] = 0;
   }
 
-  int sunriseData[][4] = {
-      {50 * 1000, 0, 0, 5},
-      {50 * 1000, 0, 20, 52},
-      {50 * 1000, 25, 20, 60},
-      {50 * 1000, 207, 87, 39},
-      {50 * 1000, 220, 162, 16},
-      {50 * 1000, 255, 165, 0},
-      {50 * 1000, 255, 255, 30}};
+  int sunriseData[][4] = {{50 * 1000, 0, 0, 5},      {50 * 1000, 0, 20, 52},
+                          {50 * 1000, 25, 20, 60},   {50 * 1000, 207, 87, 39},
+                          {50 * 1000, 220, 162, 16}, {50 * 1000, 255, 165, 0},
+                          {50 * 1000, 255, 255, 30}};
 
-  if (fade(currentColor, startColor, sunriseData[sunriseLoopStep][0], sunriseData[sunriseLoopStep][1], sunriseData[sunriseLoopStep][2], sunriseData[sunriseLoopStep][3]))
-  {
+  if (fade(currentColor, startColor, sunriseData[sunriseLoopStep][0],
+           sunriseData[sunriseLoopStep][1], sunriseData[sunriseLoopStep][2],
+           sunriseData[sunriseLoopStep][3])) {
     sunriseLoopStep++;
   }
 
   int fadeSteps = sizeof(sunriseData) / sizeof(int) / 4;
-  if (sunriseLoopStep >= fadeSteps)
-  {
+  if (sunriseLoopStep >= fadeSteps) {
 // reset all variables
 #ifdef DEBUG
     unsigned long duration = (millis() - sunriseStartTime) / 1000;
@@ -407,32 +384,23 @@ void sunrise()
 }
 
 // fire
-void fire()
-{
-  if (!doFire)
-  {
+void fire() {
+  if (!doFire) {
     // no fire happening!
     nextFireLoop = 0;
     return;
   }
 
-  if (millis() < nextFireLoop)
-  {
-    return;
-  }
+  if (millis() < nextFireLoop) return;
 
-  for (uint16_t i = 0; i < pixels.numPixels(); i++)
-  {
+  for (uint16_t i = 0; i < pixels.numPixels(); i++) {
     uint8_t flicker = random(0, 100);
     int16_t r1 = 256 - flicker;
     int16_t g1 = 120 - flicker;
     int16_t b1 = 30 - flicker;
-    if (r1 < 0)
-      r1 = 0;
-    if (g1 < 0)
-      g1 = 0;
-    if (b1 < 0)
-      b1 = 0;
+    if (r1 < 0) r1 = 0;
+    if (g1 < 0) g1 = 0;
+    if (b1 < 0) b1 = 0;
     pixels.setPixelColor(i, pixels.Color(r1, g1, b1));
   }
   pixels.show();
@@ -441,16 +409,13 @@ void fire()
 }
 
 // flash a color
-void flash()
-{
-  if (!doFlash)
-  {
+void flash() {
+  if (!doFlash) {
     // no flash happening!
     flashStartTime = 0;
     return;
   }
-  if (flashStartTime < 1)
-  {
+  if (flashStartTime < 1) {
     DEBUG_PRINTLN((String) "Flash starting");
     flashStartTime = millis();
     flashLoopStep = 0;
@@ -462,19 +427,18 @@ void flash()
     flashCurrentColor[2] = 0;
   }
 
-  int flashData[][4] = {
-      {100, flashColor[0], flashColor[1], flashColor[2]},
-      {100, flashColor[0], flashColor[1], flashColor[2]},
-      {400, 0, 0, 0}};
+  int flashData[][4] = {{100, flashColor[0], flashColor[1], flashColor[2]},
+                        {100, flashColor[0], flashColor[1], flashColor[2]},
+                        {400, 0, 0, 0}};
 
-  if (fade(flashCurrentColor, startColor, flashData[flashLoopStep][0], flashData[flashLoopStep][1], flashData[flashLoopStep][2], flashData[flashLoopStep][3]))
-  {
+  if (fade(flashCurrentColor, startColor, flashData[flashLoopStep][0],
+           flashData[flashLoopStep][1], flashData[flashLoopStep][2],
+           flashData[flashLoopStep][3])) {
     flashLoopStep++;
   }
 
   int fadeSteps = sizeof(flashData) / sizeof(int) / 4;
-  if (flashLoopStep >= fadeSteps)
-  {
+  if (flashLoopStep >= fadeSteps) {
 // reset all variables
 #ifdef DEBUG
     unsigned long duration = (millis() - flashStartTime) / 1000;
@@ -489,23 +453,21 @@ void flash()
 }
 
 // RGB Cycle loop
-void rgbCycle()
-{
-  if (!doRgbRun && !doRgbCycle)
-  {
-    return;
-  }
+void rgbCycle() {
+  if (!doRgbRun && !doRgbCycle) return;
+
   diffRgbLoop = millis() - lastRgbLoop;
 
-  if (diffRgbLoop >= rgbCycleDelay)
-  {
+  if (diffRgbLoop >= rgbCycleDelay) {
     lastRgbLoop = millis();
     DEBUG_PRINT("delay: ");
     DEBUG_PRINT(rgbCycleDelay);
-    rgbCycleStep += int(diffRgbLoop / rgbCycleDelay);
-  }
-  else
-  {
+    if (rgbCycleDelay > 0) {
+      rgbCycleStep += int(diffRgbLoop / rgbCycleDelay);
+    } else {
+      DEBUG_PRINTLN("Devision by zero avoided!");
+    }
+  } else {
     return;
   }
 
@@ -514,16 +476,13 @@ void rgbCycle()
   DEBUG_PRINT("\tstep: ");
   DEBUG_PRINT(rgbCycleStep);
 
-  // check if brightness is to high. if so, reset and iterate to next color pair.
-  if (rgbCycleStep >= rgbCycleMaxBrightness)
-  {
+  // check if brightness is to high. if so, reset and iterate to next color
+  // pair.
+  if (rgbCycleStep >= rgbCycleMaxBrightness) {
     rgbCycleStep = rgbCycleStep - rgbCycleMaxBrightness;
-    if (rgbCycleDecColour == 2)
-    {
+    if (rgbCycleDecColour == 2) {
       rgbCycleDecColour = 0;
-    }
-    else
-    {
+    } else {
       rgbCycleDecColour += 1;
     }
   }
@@ -541,54 +500,38 @@ void rgbCycle()
 }
 
 // running led
-void run()
-{
-  if (!doRun && !doRgbRun)
-  {
-    return;
-  }
-  if (millis() < nextRunLoop)
-  {
-    return;
-  }
+void run() {
+  if (!doRun && !doRgbRun) return;
+  if (millis() < nextRunLoop) return;
 
-  if (doRgbRun)
-  {
+  if (doRgbRun) {
     activeRunColor[0] = rgbCurrentColor[0];
     activeRunColor[1] = rgbCurrentColor[1];
     activeRunColor[2] = rgbCurrentColor[2];
   }
 
-  for (int i = 0; i < NUMPIXELS; i++)
-  {
-    if (((i + runIndex) % runLeds) == 0)
-    {
-      pixels.setPixelColor(i, pixels.Color(activeRunColor[0], activeRunColor[1], activeRunColor[2]));
-    }
-    else
-    {
-      pixels.setPixelColor(i, pixels.Color(inactiveRunColor[0], inactiveRunColor[1], inactiveRunColor[2]));
+  for (int i = 0; i < NUMPIXELS; i++) {
+    if (((i + runIndex) % runLeds) == 0) {
+      pixels.setPixelColor(i, pixels.Color(activeRunColor[0], activeRunColor[1],
+                                           activeRunColor[2]));
+    } else {
+      pixels.setPixelColor(
+          i, pixels.Color(inactiveRunColor[0], inactiveRunColor[1],
+                          inactiveRunColor[2]));
     }
   }
   pixels.show();
 
-  if (runDirection)
-  {
+  if (runDirection) {
     runIndex++;
-  }
-  else
-  {
+  } else {
     runIndex--;
   }
 
-  if (runIndex == 0)
-  {
-    if (runDirection)
-    {
+  if (runIndex == 0) {
+    if (runDirection) {
       runIndex++;
-    }
-    else
-    {
+    } else {
       runIndex--;
     }
   }
@@ -597,119 +540,128 @@ void run()
 }
 
 // RGB Cycle effect
-void cycle()
-{
-  if (!doRgbCycle)
-  {
-    return;
-  }
-  colorWipe(pixels.Color(rgbCurrentColor[0], rgbCurrentColor[1], rgbCurrentColor[2]), 0);
+void cycle() {
+  if (!doRgbCycle) return;
+
+  colorWipe(
+      pixels.Color(rgbCurrentColor[0], rgbCurrentColor[1], rgbCurrentColor[2]),
+      0);
 }
 
-void twinkle()
-{
-  if (!doTwinkle)
-    return;
+void twinkle() {
+  if (!doTwinkle) return;
   unsigned long now = millis();
-  if (twinkleLastLoop >= now)
-    return;
+  if (twinkleLastLoop >= now) return;
   twinkleLastLoop = now;
   bool changesMade = false;
 
-  if (nextTwinkleStart <= now)
-  {
-    for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++)
-    {
-      if (twinkleLedIndex[i] == -1)
-      {
-        DEBUG_PRINT(i);
-        DEBUG_PRINT(" twinkle started ");
+  if (nextTwinkleStart <= now) {
+    if (sizeof(twinkleLedIndex[0]) == 0) {
+      DEBUG_PRINTLN("Devision by zero avoided");
+    } else {
+      for (byte i = 0;
+           i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
+        if (twinkleLedIndex[i] == -1) {
+          DEBUG_PRINT(i);
+          DEBUG_PRINT(" twinkle started ");
 
-        twinkleLedIndex[i] = random(0, NUMPIXELS);
-        DEBUG_PRINT("for led ");
-        DEBUG_PRINT(twinkleLedIndex[i]);
+          twinkleLedIndex[i] = random(0, NUMPIXELS);
+          DEBUG_PRINT("for led ");
+          DEBUG_PRINT(twinkleLedIndex[i]);
 
-        twinkleLedDuraion[i] = random(twinkleMinDuration, twinkleMaxDuration);
-        DEBUG_PRINT(" with duration ");
-        DEBUG_PRINTLN(twinkleLedDuraion[i]);
+          twinkleLedDuraion[i] = random(twinkleMinDuration, twinkleMaxDuration);
+          DEBUG_PRINT(" with duration ");
+          DEBUG_PRINTLN(twinkleLedDuraion[i]);
 
-        twinkleLedStart[i] = now;
+          twinkleLedStart[i] = now;
 
-        nextTwinkleStart = now + random(twinkleMinDelay, twinkleMaxDelay);
-        break;
+          nextTwinkleStart = now + random(twinkleMinDelay, twinkleMaxDelay);
+          break;
+        }
       }
     }
   }
 
-  for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++)
-  {
-    if (twinkleLedIndex[i] != -1)
-    {
-      if (now >= (twinkleLedStart[i] + twinkleLedDuraion[i]))
-      {
-        DEBUG_PRINT(i);
-        DEBUG_PRINTLN(" twinkle finished, reset index");
-        // twinkle finished, reset index
-        twinkleLedIndex[i] = -1;
-        // set default bg colors for finished leds
-        DEBUG_PRINTLN("set off color");
-        pixels.setPixelColor(i, pixels.Color(twinkleBgColor[0], twinkleBgColor[1], twinkleBgColor[2]));
-        changesMade = true;
-      }
-      else
-      {
-        // loop over all active twinkles and adjust colors
+  if (sizeof(twinkleLedIndex[0]) == 0) {
+    DEBUG_PRINTLN("Devision by zero avoided!");
+  } else {
+    for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0]));
+         i++) {
+      if (twinkleLedIndex[i] != -1) {
+        if (now >= (twinkleLedStart[i] + twinkleLedDuraion[i])) {
+          DEBUG_PRINT(i);
+          DEBUG_PRINTLN(" twinkle finished, reset index");
+          // twinkle finished, reset index
+          twinkleLedIndex[i] = -1;
+          // set default bg colors for finished leds
+          DEBUG_PRINTLN("set off color");
+          pixels.setPixelColor(
+              i, pixels.Color(twinkleBgColor[0], twinkleBgColor[1],
+                              twinkleBgColor[2]));
+          changesMade = true;
+        } else {
+          // loop over all active twinkles and adjust colors
 
-        if (millis() < (twinkleLedStart[i] + (twinkleLedDuraion[i] / 2)))
-        {
-          DEBUG_PRINTLN("first fade ");
-          DEBUG_PRINTLN(i);
-          // first fade
-          twinkleTmpStartTime = twinkleLedStart[i];
-          twinkleTmpEndTime = twinkleLedStart[i] + (twinkleLedDuraion[i] / 2);
-          twinkleTmpColor[0] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[0], twinkleColor[0]);
-          twinkleTmpColor[1] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[1], twinkleColor[1]);
-          twinkleTmpColor[2] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleBgColor[2], twinkleColor[2]);
+          if (millis() < (twinkleLedStart[i] + (twinkleLedDuraion[i] / 2))) {
+            DEBUG_PRINTLN("first fade ");
+            DEBUG_PRINTLN(i);
+            // first fade
+            twinkleTmpStartTime = twinkleLedStart[i];
+            twinkleTmpEndTime = twinkleLedStart[i] + (twinkleLedDuraion[i] / 2);
+            twinkleTmpColor[0] =
+                map(now, twinkleTmpStartTime, twinkleTmpEndTime,
+                    twinkleBgColor[0], twinkleColor[0]);
+            twinkleTmpColor[1] =
+                map(now, twinkleTmpStartTime, twinkleTmpEndTime,
+                    twinkleBgColor[1], twinkleColor[1]);
+            twinkleTmpColor[2] =
+                map(now, twinkleTmpStartTime, twinkleTmpEndTime,
+                    twinkleBgColor[2], twinkleColor[2]);
+          } else {
+            DEBUG_PRINT("second fade ");
+            DEBUG_PRINTLN(i);
+            // second fade
+            twinkleTmpStartTime =
+                twinkleLedStart[i] + (twinkleLedDuraion[i] / 2);
+            twinkleTmpEndTime = twinkleLedStart[i] + twinkleLedDuraion[i];
+            twinkleTmpColor[0] =
+                map(now, twinkleTmpStartTime, twinkleTmpEndTime,
+                    twinkleColor[0], twinkleBgColor[0]);
+            twinkleTmpColor[1] =
+                map(now, twinkleTmpStartTime, twinkleTmpEndTime,
+                    twinkleColor[1], twinkleBgColor[1]);
+            twinkleTmpColor[2] =
+                map(now, twinkleTmpStartTime, twinkleTmpEndTime,
+                    twinkleColor[2], twinkleBgColor[2]);
+          }
+          DEBUG_PRINTLN("set fade color");
+          pixels.setPixelColor(
+              twinkleLedIndex[i],
+              pixels.Color(twinkleTmpColor[0], twinkleTmpColor[1],
+                           twinkleTmpColor[2]));
+          changesMade = true;
         }
-        else
-        {
-          DEBUG_PRINT("second fade ");
-          DEBUG_PRINTLN(i);
-          // second fade
-          twinkleTmpStartTime = twinkleLedStart[i] + (twinkleLedDuraion[i] / 2);
-          twinkleTmpEndTime = twinkleLedStart[i] + twinkleLedDuraion[i];
-          twinkleTmpColor[0] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[0], twinkleBgColor[0]);
-          twinkleTmpColor[1] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[1], twinkleBgColor[1]);
-          twinkleTmpColor[2] = map(now, twinkleTmpStartTime, twinkleTmpEndTime, twinkleColor[2], twinkleBgColor[2]);
-        }
-        DEBUG_PRINTLN("set fade color");
-        pixels.setPixelColor(twinkleLedIndex[i], pixels.Color(twinkleTmpColor[0], twinkleTmpColor[1], twinkleTmpColor[2]));
-        changesMade = true;
       }
     }
   }
 
-  if (changesMade)
-  {
+  if (changesMade) {
     DEBUG_PRINTLN("showing");
     pixels.show();
-    delay(1); //testing without debug ...
+    delay(1);  // testing without debug ...
   }
 }
 
 // logic
-void mqttCallback(char *topic, byte *payload, unsigned int length)
-{
+void mqttCallback(char *topic, byte *payload, unsigned int length) {
   payload[length] = '\0';
   unsigned int numOfOptions = 0;
   DEBUG_PRINT("Message arrived: Topic [");
   DEBUG_PRINT(topic);
   DEBUG_PRINT("] | Data [");
-  for (unsigned int i = 0; i < length; i++)
-  {
+  for (unsigned int i = 0; i < length; i++) {
     DEBUG_PRINT((char)payload[i]);
-    if ((char)payload[i] == ';')
-    {
+    if ((char)payload[i] == ';') {
       numOfOptions++;
     }
   }
@@ -720,8 +672,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
   // setting lastMsg to push the next publish cycle into the future
   lastMsg = millis();
 
-  if ((char)payload[0] == '0')
-  {
+  if ((char)payload[0] == '0') {
     DEBUG_PRINTLN("Disabling everything");
     doSunrise = false;
     doFixedColor = false;
@@ -732,9 +683,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     doRgbCycle = false;
     doTwinkle = false;
     colorWipe(pixels.Color(0, 0, 0), 0);
-  }
-  else if ((char)payload[0] == '1')
-  {
+  } else if ((char)payload[0] == '1') {
     DEBUG_PRINTLN("Enabling sunrise");
     doSunrise = true;
     doFixedColor = false;
@@ -744,9 +693,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     doRgbRun = false;
     doRgbCycle = false;
     doTwinkle = false;
-  }
-  else if ((char)payload[0] == '2')
-  {
+  } else if ((char)payload[0] == '2') {
     DEBUG_PRINTLN("Enabling fixed color");
     // options: red;green;blue;wait ms;
     doSunrise = false;
@@ -759,10 +706,11 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     doTwinkle = false;
     s = String((char *)payload);
     // String s = String((char*)payload);
-    colorWipe(pixels.Color(getValue(s, ';', 1).toInt(), getValue(s, ';', 2).toInt(), getValue(s, ';', 3).toInt()), getValue(s, ';', 4).toInt());
-  }
-  else if ((char)payload[0] == '3')
-  {
+    colorWipe(
+        pixels.Color(getValue(s, ';', 1).toInt(), getValue(s, ';', 2).toInt(),
+                     getValue(s, ';', 3).toInt()),
+        getValue(s, ';', 4).toInt());
+  } else if ((char)payload[0] == '3') {
     // not yet implemented
     DEBUG_PRINTLN("Enabling fade to color");
     doSunrise = false;
@@ -773,9 +721,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     doRgbRun = false;
     doRgbCycle = false;
     doTwinkle = false;
-  }
-  else if ((char)payload[0] == '4')
-  {
+  } else if ((char)payload[0] == '4') {
     // not yet implemented
     DEBUG_PRINTLN("Enabling rainbow");
     doSunrise = false;
@@ -786,9 +732,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     doRgbRun = false;
     doRgbCycle = false;
     doTwinkle = false;
-  }
-  else if ((char)payload[0] == '5')
-  {
+  } else if ((char)payload[0] == '5') {
     DEBUG_PRINTLN("Enabling fire");
     doSunrise = false;
     doFixedColor = false;
@@ -798,9 +742,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     doRgbRun = false;
     doRgbCycle = false;
     doTwinkle = false;
-  }
-  else if ((char)payload[0] == '6')
-  {
+  } else if ((char)payload[0] == '6') {
     DEBUG_PRINTLN("Enabling flash");
     // options: red;green;blue;
     doSunrise = false;
@@ -816,11 +758,10 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     flashColor[0] = getValue(s, ';', 1).toInt();
     flashColor[1] = getValue(s, ';', 2).toInt();
     flashColor[2] = getValue(s, ';', 3).toInt();
-  }
-  else if ((char)payload[0] == '7')
-  {
+  } else if ((char)payload[0] == '7') {
     DEBUG_PRINT("Enabling run with active: ");
-    // options: num of leds;delay;direction;acrive red;active green;active blue;passive red;passive green;passive blue;
+    // options: num of leds;delay;direction;acrive red;active green;active
+    // blue;passive red;passive green;passive blue;
     doSunrise = false;
     doFixedColor = false;
     doFire = false;
@@ -833,12 +774,9 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     s = String((char *)payload);
     runLeds = getValue(s, ';', 1).toInt();
     runDelay = getValue(s, ';', 2).toInt();
-    if (getValue(s, ';', 3).toInt())
-    {
+    if (getValue(s, ';', 3).toInt()) {
       runDirection = true;
-    }
-    else
-    {
+    } else {
       runDirection = false;
     }
     activeRunColor[0] = getValue(s, ';', 4).toInt();
@@ -860,9 +798,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     DEBUG_PRINT(" ");
     DEBUG_PRINT(inactiveRunColor[2]);
     DEBUG_PRINTLN();
-  }
-  else if ((char)payload[0] == '8')
-  {
+  } else if ((char)payload[0] == '8') {
     DEBUG_PRINT("Enabling fixed LED color");
     // options: red;green;blue;LED index;LED index;LED index;...
     doSunrise = false;
@@ -877,7 +813,9 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     s = String((char *)payload);
 
     // add support for multiple leds
-    uint32_t color = pixels.Color(getValue(s, ';', 1).toInt(), getValue(s, ';', 2).toInt(), getValue(s, ';', 3).toInt());
+    uint32_t color =
+        pixels.Color(getValue(s, ';', 1).toInt(), getValue(s, ';', 2).toInt(),
+                     getValue(s, ';', 3).toInt());
     DEBUG_PRINT(" color: r");
     DEBUG_PRINT(getValue(s, ';', 1).toInt());
     DEBUG_PRINT(" g");
@@ -886,8 +824,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     DEBUG_PRINT(getValue(s, ';', 3).toInt());
     DEBUG_PRINT(" indexes: ");
 
-    for (unsigned int i = 0; i <= (numOfOptions - 5); i++)
-    {
+    for (unsigned int i = 0; i <= (numOfOptions - 5); i++) {
       DEBUG_PRINT(getValue(s, ';', i + 4).toInt());
       DEBUG_PRINT(", ");
       pixels.setPixelColor(getValue(s, ';', i + 4).toInt(), color);
@@ -895,10 +832,8 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     pixels.show();
 
     DEBUG_PRINTLN();
-  }
-  else if ((char)payload[0] == '9')
-  {
-    //max brightness;loop delay
+  } else if ((char)payload[0] == '9') {
+    // max brightness;loop delay
     DEBUG_PRINT("Enabling RGB Cycling with reset");
     doSunrise = false;
     doFixedColor = false;
@@ -921,10 +856,8 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     s = String((char *)payload);
     rgbCycleMaxBrightness = getValue(s, ';', 1).toInt();
     rgbCycleDelay = getValue(s, ';', 2).toInt();
-  }
-  else if ((char)payload[0] == 'a')
-  {
-    //max brightness;loop delay
+  } else if ((char)payload[0] == 'a') {
+    // max brightness;loop delay
     DEBUG_PRINT("Enabling RGB Cycling");
     doSunrise = false;
     doFixedColor = false;
@@ -939,10 +872,8 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     rgbCycleMaxBrightness = getValue(s, ';', 1).toInt();
     rgbCycleDelay = getValue(s, ';', 2).toInt();
     lastRgbLoop = millis();
-  }
-  else if ((char)payload[0] == 'b')
-  {
-    //num of leds;run loop dely;direction;max brightness;rgb cycle delay
+  } else if ((char)payload[0] == 'b') {
+    // num of leds;run loop dely;direction;max brightness;rgb cycle delay
     DEBUG_PRINT("Enabling RGB run reset");
     doSunrise = false;
     doFixedColor = false;
@@ -956,12 +887,9 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     s = String((char *)payload);
     runLeds = getValue(s, ';', 1).toInt();
     runDelay = getValue(s, ';', 2).toInt();
-    if (getValue(s, ';', 3).toInt())
-    {
+    if (getValue(s, ';', 3).toInt()) {
       runDirection = true;
-    }
-    else
-    {
+    } else {
       runDirection = false;
     }
     rgbCycleMaxBrightness = getValue(s, ';', 4).toInt();
@@ -983,10 +911,8 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     rgbCurrentColor[0] = 0;
     rgbCurrentColor[1] = 0;
     rgbCurrentColor[2] = 0;
-  }
-  else if ((char)payload[0] == 'c')
-  {
-    //num of leds;run loop dely;direction;max brightness;rgb cycle delay
+  } else if ((char)payload[0] == 'c') {
+    // num of leds;run loop dely;direction;max brightness;rgb cycle delay
     DEBUG_PRINT("Enabling RGB run");
     doSunrise = false;
     doFixedColor = false;
@@ -1000,21 +926,18 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     s = String((char *)payload);
     runLeds = getValue(s, ';', 1).toInt();
     runDelay = getValue(s, ';', 2).toInt();
-    if (getValue(s, ';', 3).toInt())
-    {
+    if (getValue(s, ';', 3).toInt()) {
       runDirection = true;
-    }
-    else
-    {
+    } else {
       runDirection = false;
     }
     rgbCycleMaxBrightness = getValue(s, ';', 4).toInt();
     rgbCycleDelay = getValue(s, ';', 5).toInt();
     lastRgbLoop = millis();
-  }
-  else if ((char)payload[0] == 'd')
-  {
-    //background red;background green;background blue;twinkle red;twinkle green;twinkle blue;twinkle min delay;twinkle max delay;twinkle min duration;twinkle max duration
+  } else if ((char)payload[0] == 'd') {
+    // background red;background green;background blue;twinkle red;twinkle
+    // green;twinkle blue;twinkle min delay;twinkle max delay;twinkle min
+    // duration;twinkle max duration
     DEBUG_PRINTLN("Enabling Twinkle");
     doSunrise = false;
     doFixedColor = false;
@@ -1042,55 +965,46 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
 
     nextTwinkleStart = 0;
 
-    colorWipe(pixels.Color(twinkleBgColor[0], twinkleBgColor[1], twinkleBgColor[2]), 0);
+    colorWipe(
+        pixels.Color(twinkleBgColor[0], twinkleBgColor[1], twinkleBgColor[2]),
+        0);
 
     // reset all twinkle states
-    for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++)
+    for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0]));
+         i++)
       twinkleLedIndex[i] = -1;
-  }
-  else if ((char)payload[0] == 'Y')
-  {
+  } else if ((char)payload[0] == 'Y') {
     DEBUG_PRINTLN("Running default effect");
     runDefault();
-  }
-  else if ((char)payload[0] == 'Z')
-  {
+  } else if ((char)payload[0] == 'Z') {
     DEBUG_PRINT("Saving ");
-    for (unsigned int i = 0; i < length - 2; i++)
-    {
+    for (unsigned int i = 0; i < length - 2; i++) {
       DEBUG_PRINT((char)payload[i + 2]);
       defaultPayload[i] = payload[i + 2];
     }
     DEBUG_PRINTLN(" as default effect");
     defaulLength = length;
     defaultSaved = true;
-  }
-  else
-  {
+  } else {
     DEBUG_PRINTLN("Unknown RGB command");
   }
 
-  //return false;
+  // return false;
 }
 
 // default effect
-void runDefault()
-{
-  if (defaultSaved)
-  {
+void runDefault() {
+  if (defaultSaved) {
     DEBUG_PRINTLN("Running default effect");
     mqttCallback((char *)"Default", defaultPayload, defaulLength);
-  }
-  else
-  {
+  } else {
     DEBUG_PRINTLN("No default was saved");
   }
 }
 
-void setup()
-{
+void setup() {
 #ifdef DEBUG
-  Serial.begin(SERIAL_BAUD); // initialize serial connection
+  Serial.begin(SERIAL_BAUD);  // initialize serial connection
   // delay for the serial monitor to start
   delay(3000);
 #endif
@@ -1123,15 +1037,13 @@ void setup()
 #endif
 }
 
-void loop()
-{
+void loop() {
 #ifdef BEEPER
   buzzerCheck();
 #endif
 
   // Check if the wifi is connected
-  if (WiFi.status() != WL_CONNECTED)
-  {
+  if (WiFi.status() != WL_CONNECTED) {
     // set warning color since we are not connected to wifi (red)
     colorWipe(pixels.Color(50, 00, 0), 0);
 
@@ -1140,15 +1052,13 @@ void loop()
     DEBUG_PRINTLN("My MAC: " + String(WiFi.macAddress()));
   }
 
-  if ((WiFi.status() == WL_CONNECTED) && (!mqttClient.connected()))
-  {
+  if ((WiFi.status() == WL_CONNECTED) && (!mqttClient.connected())) {
     // set warning color since we are not connected to mqtt (yellow)
     colorWipe(pixels.Color(25, 25, 0), 0);
     delay(500);
 
     DEBUG_PRINTLN("MQTT is not connected, let's try to reconnect");
-    if (!mqttReconnect())
-    {
+    if (!mqttReconnect()) {
       // This should not happen, but seems to...
       DEBUG_PRINTLN("MQTT was unable to connect! Exiting the upload loop");
       // set warning color since we can not connect to mqtt
@@ -1156,24 +1066,20 @@ void loop()
       delay(500);
       // force reconnect to mqtt
       initialPublish = false;
-    }
-    else
-    {
+    } else {
       // readyToUpload = true;
       DEBUG_PRINTLN("MQTT successfully reconnected");
     }
   }
 
-  if ((WiFi.status() == WL_CONNECTED) && (!initialPublish))
-  {
+  if ((WiFi.status() == WL_CONNECTED) && (!initialPublish)) {
     DEBUG_PRINT("MQTT discovery publish loop:");
 
-    String clientMac = WiFi.macAddress(); // 17 chars
+    String clientMac = WiFi.macAddress();  // 17 chars
     char topic[37] = "/d1ws2812/discovery/";
     strcat(topic, clientMac.c_str());
 
-    if (mqttClient.publish(topic, VERSION, true))
-    {
+    if (mqttClient.publish(topic, VERSION, true)) {
       // Publishing values successful, removing them from cache
       DEBUG_PRINTLN(" successful");
 
@@ -1181,67 +1087,53 @@ void loop()
 
       // show system startup success by flashing green
       mqttCallback((char *)"Startup", (byte *)"6;0;60;0", 8);
-    }
-    else
-    {
+    } else {
       DEBUG_PRINTLN(" FAILED!");
     }
   }
 
 // read voltage if required
 #ifdef READVOLTAGE
-  if (millis() >= nextVoltageLoop)
-  {
+  if (millis() >= nextVoltageLoop) {
     float volt = readVoltage();
 
     char voltChar[5];
     dtostrf(volt, 5, 3, voltChar);
 
-    String clientMac = WiFi.macAddress(); // 17 chars
+    String clientMac = WiFi.macAddress();  // 17 chars
     char topic[37] = "/d1ws2812/voltage/";
     strcat(topic, clientMac.c_str());
 
     DEBUG_PRINT("Voltage: ");
     DEBUG_PRINTLN(volt);
 
-    if (volt == 0.0)
-    {
+    if (volt == 0.0) {
       DEBUG_PRINTLN("No voltage could be read");
-    }
-    else if (lastVolt == volt)
-    {
+    } else if (lastVolt == volt) {
       DEBUG_PRINTLN("Voltage did not change");
-    }
-    else
-    {
+    } else {
       lastVolt = volt;
-      if (cells == -1)
-      {
+      if (cells == -1) {
         cells = (volt / 3.5);
         DEBUG_PRINT("Calculated cells: ");
-      }
-      else
-      {
+      } else {
         DEBUG_PRINT("Cells calculated at start: ");
       }
       DEBUG_PRINTLN(cells);
 
-      if (cells > 0)
-      {
+      if (cells > 0) {
         float cellVoltage = (volt / cells);
         DEBUG_PRINT("Calculated cell voltage: ");
         DEBUG_PRINTLN(cellVoltage);
 
 #ifdef BEEPER
-        if (cellVoltage < 3.6)
-        {
+        if (cellVoltage < 3.6) {
           buzz(5000);
         }
 #endif
       }
 
-      if (initialPublish)
-      {
+      if (initialPublish) {
         mqttClient.publish(topic, voltChar, true);
       }
     }
