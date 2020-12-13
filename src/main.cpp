@@ -456,18 +456,24 @@ void flash() {
 void rgbCycle() {
   if (!doRgbRun && !doRgbCycle) return;
 
-  diffRgbLoop = millis() - lastRgbLoop;
+  // To avoid division by zero reboots, just set it to 1, which is the fastest
+  // possible loop. This is only happening once for every start of the effect.
+  if (rgbCycleDelay == 0) {
+    DEBUG_PRINTLN("Division by zero avoided!");
+    rgbCycleDelay = 1;
+  }
 
-  if (diffRgbLoop >= rgbCycleDelay) {
+  // if the next loop (diffRgbLoop) is not set, set it
+  if (diffRgbLoop <= lastRgbLoop) {
+    diffRgbLoop = lastRgbLoop + rgbCycleDelay;
+  }
+
+  // check if a rgb calculation is required and do the math
+  if (diffRgbLoop <= millis()) {
+    rgbCycleStep += int((millis() - lastRgbLoop) / rgbCycleDelay);
     lastRgbLoop = millis();
-    DEBUG_PRINT("delay: ");
-    DEBUG_PRINT(rgbCycleDelay);
-    if (rgbCycleDelay > 0) {
-      rgbCycleStep += int(diffRgbLoop / rgbCycleDelay);
-    } else {
-      DEBUG_PRINTLN("Division by zero avoided!");
-    }
   } else {
+    // if it is not time yet, just exit this loop
     return;
   }
 
