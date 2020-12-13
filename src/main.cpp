@@ -465,7 +465,7 @@ void rgbCycle() {
     if (rgbCycleDelay > 0) {
       rgbCycleStep += int(diffRgbLoop / rgbCycleDelay);
     } else {
-      DEBUG_PRINTLN("Devision by zero avoided!");
+      DEBUG_PRINTLN("Division by zero avoided!");
     }
   } else {
     return;
@@ -497,6 +497,14 @@ void rgbCycle() {
   DEBUG_PRINT(rgbCurrentColor[1]);
   DEBUG_PRINT("\tb: ");
   DEBUG_PRINTLN(rgbCurrentColor[2]);
+
+  if (doRgbCycle) {
+    // since rgbCycle is also used for RgbRun, only display the color on
+    // RgbCycle
+    colorWipe(pixels.Color(rgbCurrentColor[0], rgbCurrentColor[1],
+                           rgbCurrentColor[2]),
+              0);
+  }
 }
 
 // running led
@@ -539,15 +547,6 @@ void run() {
   nextRunLoop = millis() + runDelay;
 }
 
-// RGB Cycle effect
-void cycle() {
-  if (!doRgbCycle) return;
-
-  colorWipe(
-      pixels.Color(rgbCurrentColor[0], rgbCurrentColor[1], rgbCurrentColor[2]),
-      0);
-}
-
 void twinkle() {
   if (!doTwinkle) return;
   unsigned long now = millis();
@@ -557,7 +556,7 @@ void twinkle() {
 
   if (nextTwinkleStart <= now) {
     if (sizeof(twinkleLedIndex[0]) == 0) {
-      DEBUG_PRINTLN("Devision by zero avoided");
+      DEBUG_PRINTLN("Division by zero avoided");
     } else {
       for (byte i = 0;
            i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0])); i++) {
@@ -583,7 +582,7 @@ void twinkle() {
   }
 
   if (sizeof(twinkleLedIndex[0]) == 0) {
-    DEBUG_PRINTLN("Devision by zero avoided!");
+    DEBUG_PRINTLN("Division by zero avoided!");
   } else {
     for (byte i = 0; i < (sizeof(twinkleLedIndex) / sizeof(twinkleLedIndex[0]));
          i++) {
@@ -1151,7 +1150,6 @@ void loop() {
   fire();
   flash();
   run();
-  cycle();
   twinkle();
 
   // feeding the watchdog to be sure
