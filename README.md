@@ -50,67 +50,67 @@ Please be aware, that you have to end the attributes with a semicolon!
 
 ## Detailed description
 ### 0: off
-*Attributes:* None
+*Attributes:* None\
 All LEDs are switched off.
 
 ### 1: Sunrise
-*Attributes:* None
+*Attributes:* None\
 Sunrise simulation overt time.
 
 ### 2: Fixed
-*Attributes:*  red;green;blue;wait ms;
+*Attributes:*  red;green;blue;wait ms;\
 Fixed color for all LEDS.
 
 ### 3: Fade
 **Not yet implemented**
-*Attributes:* None
+*Attributes:* None\
 Fade from to a color.
 
 ### 4: Rainbow
 **Not yet implemented**
-*Attributes:* None
+*Attributes:* None\
 Animated rainbow colors.
 
 ### 5: Fire
-*Attributes:*: None
+*Attributes:*: None\
 Animated fire effect.
 
 ### 6: Flash
-*Attributes:* red;green;blue;
+*Attributes:* red;green;blue;\
 Flash a color.
 
 ### 7: Run
-*Attributes:* num of leds;loop delay;direction;active red;active green;active blue;passive red;passive green;passive blue;
+*Attributes:* num of leds;loop delay;direction;active red;active green;active blue;passive red;passive green;passive blue;\
 Animate running light. It is always one led with the active color in <num of leds> in the passive color.
 
 ### 8: Fixed LED
-*Attributes:* red;green;blue;LED index;LED index;LED index;...
+*Attributes:* red;green;blue;LED index;LED index;LED index;...\
 Fixed color for a single LED. Please be aware, than this is not as effective as the normal fixed effect, since it will call `pixel.show()` for every LED on its own, not to mention the MQTT overhead.
 
 ### 9: RGB Cycle reset
-*Attributes:* max brightness;loop delay
+*Attributes:* max brightness;loop delay\
 Cycles trough all colors and starts always at the same color.
 
 ### a: RGB Cycle
-*Attributes:* max brightness;loop delay
+*Attributes:* max brightness;loop delay\
 Cycles trough all colors and continues at the last color.
 
 ### b: RGB run reset
-*Attributes:* num of leds;run loop dely;direction;max brightness;rgb cycle delay
+*Attributes:* num of leds;run loop dely;direction;max brightness;rgb cycle delay\
 Cycles trough all colors and starts always at the same color for the run effect. The secondary "color" is always switched off LEDs (0;0;0).
 
 ### c: RGB run
-*Attributes:* num of leds;run loop dely;direction;max brightness;rgb cycle delay
+*Attributes:* num of leds;run loop dely;direction;max brightness;rgb cycle delay\
 Cycles trough all colors and continues at the last color for the run effect. The secondary "color" is always switched off LEDs (0;0;0).
 
 ### d: Twinkle
-*Attributes:* background red;background green;background blue;twinkle red;twinkle green;twinkle blue;twinkle min delay;twinkle max delay;twinkle min duration;twinkle max duration
+*Attributes:* background red;background green;background blue;twinkle red;twinkle green;twinkle blue;twinkle min delay;twinkle max delay;twinkle min duration;twinkle max duration\
 Sets all LEDs to the background color, then "twinkles" (fade to twinkle color and back) random leds at random between twinkle min and max delay for a duration between twinkle min and max duration. Please be aware, that it chooses LEDs from 0 to `NUMPIXELS`. So if you connect only 30 LEDs, but NUMPIXELS is set to 120 (default), you have to consider the number of twinkles not for 30 but for 120 LEDs. There is a configurable amount of max twinkles at any given point in time in config.h under the name `MAX_TWINKLES`.
 
 ### Y: Run default
-*Attributes:* None
+*Attributes:* None\
 Runs the before (Z) saved default effect.
 
 ### Z: Save default
-*Attributes:* Z;other effect and options
+*Attributes:* Z;other effect and options\
 Saves a effect to be run after time limited effects or called with (Y).
